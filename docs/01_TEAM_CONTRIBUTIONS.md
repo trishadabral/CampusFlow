@@ -12,6 +12,8 @@ OS concept, real DBMS work, and its own UI screens.
 **Built:**
 - **Database design** — the full 3NF schema (`database/schema.sql`): 14 tables, primary/foreign keys,
   CHECK constraints, indexes; audit triggers on bookings, applications and allocations
+- **Migrations** — `server/src/dbms/migrations.js`: `migrate_*.sql` files upgrade a live database
+  without wiping data, tracked in `schema_migrations` (`npm run db:migrate`)
 - **Migrations** — `database/migrate_v2.sql` so existing installs upgrade cleanly
 - **Seed data** — 12 students (mixed CGPA/branches/backlogs), companies, drives, test questions,
   labs and interview rooms (`server/src/seed.js`)
@@ -37,7 +39,9 @@ discipline.
 
 **Built:**
 - **Eligibility engine** — `checkEligibility()` plus the `sp_generate_shortlist()` stored procedure;
-  every verdict comes with reasons
+  every verdict comes with reasons. `findEligibleStudents()` (`server/src/dbms/eligibility.js`)
+  enforces the same rules as one indexed SQL query — the wizard preview and eligible-student
+  views filter in the database, not in Node
 - **Drive APIs** — create/list/detail/apply, eligibility preview, question management
   (`server/src/routes/drives.js`)
 - **Add Drive wizard** — 4 guided steps: details + eligibility → test-question builder →
@@ -76,6 +80,8 @@ exactly 10 win.
 - **Stress test** — `POST /api/monitor/stress`: fires N concurrent booking attempts and proves
   `confirmed = min(attempts, seats)` with zero oversell
 - **Notifications backend** — the inbox tables and APIs students rely on for schedules and results
+- **Audit-trail reads** — `server/src/dbms/audit.js`: recent activity, per-record history and
+  GROUP-BY summaries over the trigger-written `audit_log` (powers the System Monitor feed)
 
 **OS concept:** mutexes, critical sections, lock waits, process-safe resource sharing.
 **DBMS concept:** ACID transactions, row-level locking, isolation behavior.

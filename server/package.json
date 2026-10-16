@@ -1,1 +1,25 @@
-{"dependencies":{"bcryptjs":"^2.4.3","cors":"^2.8.5","dotenv":"^16.4.5","express":"^4.21.2","jsonwebtoken":"^9.0.2","mysql2":"^3.11.3"},"description":"CampusFlow OS backend API (Phase 1) — the placement cell as an operating system","engines":{"node":">=18"},"main":"src/index.js","name":"campusflow-server","private":true,"scripts":{"db:reset":"node src/reset.js","db:seed":"node src/seed.js","dev":"node --watch src/index.js","start":"node src/index.js"},"version":"1.0.0"}
+{
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.2",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.11.3"
+  },
+  "description": "CampusFlow OS backend API (Phase 1) \u2014 the placement cell as an operating system",
+  "engines": {
+    "node": ">=18"
+  },
+  "main": "src/index.js",
+  "name": "campusflow-server",
+  "private": true,
+  "scripts": {
+    "db:reset": "node src/reset.js",
+    "db:seed": "node src/seed.js",
+    "dev": "node --watch src/index.js",
+    "start": "node src/index.js",
+    "db:migrate": "node src/migrate.js"
+  },
+  "version": "1.0.0"
+}

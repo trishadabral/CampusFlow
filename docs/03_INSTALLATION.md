@@ -146,6 +146,16 @@ is silently ignored.
 **Starting over**
 `npm run db:reset` wipes and rebuilds everything (schema + demo data). Safe to run any time.
 
+**Upgrading without wiping data**
+If you already have a database with real data (e.g. from an earlier version), don't reset —
+apply the pending schema upgrades instead:
+```bash
+cd server
+npm run db:migrate
+```
+This runs any `database/migrate_*.sql` files you haven't applied yet, in order, and records
+them so each runs exactly once.
+
 ---
 
 ## Project layout

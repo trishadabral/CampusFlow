@@ -7,7 +7,7 @@
 
 const pool = require('../dbms/db');
 const { bookSeat } = require('./critical-section');
-const { checkEligibility } = require('../dbms/eligibility');
+const { findEligibleStudents } = require('../dbms/eligibility');
 
 function httpError(status, message) {
   const err = new Error(message);
@@ -361,24 +361,12 @@ async function submitTest(driveId, studentId, answers) {
 // ---------------------------------------------------------------------------
 // eligibleStudents(criteria) — every student passing the given criteria.
 // Used for the wizard's live preview and the recruiter's eligible-students view.
+// The filtering is a single indexed SQL query (dbms/eligibility.js), not a
+// fetch-all-and-filter in Node.
 // ---------------------------------------------------------------------------
 async function eligibleStudents(criteria) {
-  const [rows] = await pool.query(
-    `SELECT u.id, u.name, u.email, s.roll_no, s.branch, s.cgpa, s.backlogs, s.graduation_year
-     FROM students s JOIN users u ON u.id = s.user_id
-     ORDER BY s.cgpa DESC`
-  );
-  return rows
-    .map((r) => {
-      const student = {
-        id: r.id, name: r.name, email: r.email, roll_no: r.roll_no,
-        branch: r.branch, cgpa: Number(r.cgpa), backlogs: r.backlogs,
-        graduation_year: r.graduation_year,
-      };
-      const { eligible, reasons } = checkEligibility(student, criteria);
-      return { student, eligible, fail_reasons: reasons };
-    })
-    .filter((r) => r.eligible);
+  const students = await findEligibleStudents(criteria);
+  return students.map((student) => ({ student, eligible: true, fail_reasons: [] }));
 }
 
 module.exports = {

@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const pool = require('../dbms/db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { bookSeat } = require('../os/critical-section');
+const { recentActivity } = require('../dbms/audit');
 
 const router = express.Router();
 
@@ -60,13 +61,10 @@ router.get('/stats', async (req, res, next) => {
 });
 
 // GET /monitor/activity?limit=50 — newest audit_log entries first
+// (SQL lives in dbms/audit.js; this route shapes the JSON)
 router.get('/activity', async (req, res, next) => {
   try {
-    const limit = parseLimit(req.query.limit);
-    const [rows] = await pool.query(
-      'SELECT id, action, entity, entity_id, details, created_at FROM audit_log ORDER BY id DESC LIMIT ?',
-      [limit]
-    );
+    const rows = await recentActivity({ limit: req.query.limit });
     res.json(
       rows.map((r) => ({
         id: r.id,
