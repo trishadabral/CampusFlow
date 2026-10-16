@@ -15,6 +15,11 @@ OS concept, real DBMS work, and its own UI screens.
 - **Migrations** — `server/src/dbms/migrations.js`: `migrate_*.sql` files upgrade a live database
   without wiping data, tracked in `schema_migrations` (`npm run db:migrate`)
 - **Migrations** — `database/migrate_v2.sql` so existing installs upgrade cleanly
+- **DB pool** — `server/src/dbms/db.js`: the shared connection pool, plus `tableCounts()`
+  and `healthCheck()` (powers the System Monitor stats)
+- **Banker's safety check** — `server/src/os/banker.js`: every manual booking runs the
+  safe-sequence check; unsafe requests are refused *with an explanation of what would
+  over-allocate*
 - **Seed data** — 12 students (mixed CGPA/branches/backlogs), companies, drives, test questions,
   labs and interview rooms (`server/src/seed.js`)
 - **Auth system** — register/login, JWT tokens, bcrypt password hashing, role-based access control
@@ -54,10 +59,8 @@ discipline.
   interviews round-robin across panels and rooms (`server/src/os/pipeline.js`)
 - **Student journey UI** — eligible-drives browsing, 1-click apply, visual progress tracker
   (Applied → Test → Result → Interview), My Schedule page
-- **Scheduling Lab** — CPU scheduling simulator (FCFS / Priority / Round-Robin) with Gantt charts
-  and waiting-time analysis
 
-**OS concept:** batch-job scheduling (the pipeline drains queues as jobs), CPU scheduling
+**OS concept:** batch-job scheduling (the pipeline drains queues as jobs).
 algorithms for interview ordering.
 **DBMS concept:** stored procedures, eligibility as indexed queries, views for reports.
 
@@ -74,17 +77,14 @@ exactly 10 win.
   lock (not app code) is the single source of truth
 - **Pipeline seat assignment** — the auto-scheduler books every test/interview seat through the
   same serialized primitive, so system-driven booking is just as safe as manual booking
-- **Lock observability** — `lock_events` table + `os/locks.js`: every acquire/wait/release is
-  recorded with wait times
 - **System Monitor UI** — live lock table, activity feed, stats; the demo surface for the viva
 - **Stress test** — `POST /api/monitor/stress`: fires N concurrent booking attempts and proves
   `confirmed = min(attempts, seats)` with zero oversell
 - **Notifications backend** — the inbox tables and APIs students rely on for schedules and results
-- **Audit-trail reads** — `server/src/dbms/audit.js`: recent activity, per-record history and
-  GROUP-BY summaries over the trigger-written `audit_log` (powers the System Monitor feed)
-- **Transactional writes** — `server/src/dbms/transactions.js`: `withTransaction()` plus the
-  multi-statement operations that need it — question-set replacement and test-result recording
-  (result row + status flip, never one without the other)
+- **CPU scheduling simulator** — `server/src/os/cpu-scheduler.js`: FCFS / Priority / Round-Robin
+  with Gantt output and waiting-time analysis (powers the Scheduling Lab)
+- **Reporting queries** — `server/src/dbms/reports.js`: all aggregate queries (JOIN + GROUP BY,
+  conditional counts, the `v_drive_report` view) behind the Control Center and Reports page
 
 **OS concept:** mutexes, critical sections, lock waits, process-safe resource sharing.
 **DBMS concept:** ACID transactions, row-level locking, isolation behavior.
@@ -98,19 +98,21 @@ exactly 10 win.
 **Built:**
 - **Resource inventory** — labs (with seating capacity), interview rooms, interviewers
   (`server/src/routes/resources.js`); admin UI to add and manage them
-- **Banker's safety check** — `os/banker.js`: every manual booking runs the safety algorithm;
-  unsafe requests are refused *with an explanation of what would over-allocate*
 - **Admin Control Center** — all drives with stage + progress, one-click pipeline actions,
   full schedule of every test/interview session, per-applicant roster
 - **Pipeline resource wiring** — test sessions are batched into labs by capacity; interviews are
   assigned rooms round-robin, straight from the inventory
-- **Reports page** — placement progress per drive and per company (aggregate queries)
-- **Reporting queries** — `server/src/dbms/reports.js`: all aggregate queries (JOIN + GROUP BY,
-  conditional counts, the `v_drive_report` view) behind the Control Center and Reports page
-- **Summary view** — `v_drive_report`: one row per drive with applied/shortlisted/selected counts
+- **Reports page** — placement progress per drive and per company
+- **Lock observability** — `lock_events` table + `server/src/os/locks.js`: every acquire/wait/release
+  is recorded with wait times (feeds the System Monitor's live lock table)
+- **Transactional writes** — `server/src/dbms/transactions.js`: `withTransaction()` plus the
+  multi-statement operations that need it — question-set replacement and test-result recording
+  (result row + status flip, never one without the other)
+- **Audit-trail reads** — `server/src/dbms/audit.js`: recent activity, per-record history and
+  GROUP-BY summaries over the trigger-written `audit_log` (powers the System Monitor feed)
 
-**OS concept:** resource-allocation graph, Banker's algorithm (deadlock avoidance).
-**DBMS concept:** aggregate queries (JOIN + GROUP BY), views, audit triggers on allocations.
+**OS concept:** resource-allocation graph, lock observability, deadlock avoidance.
+**DBMS concept:** ACID transactions, audit-trail queries, views, audit triggers on allocations.
 
 ---
 
