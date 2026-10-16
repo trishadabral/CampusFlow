@@ -1,6 +1,6 @@
 // Scheduling Lab: simulate CPU scheduling algorithms on interviews.
 const express = require('express');
-const { simulate } = require('../lib/scheduler');
+const { simulate } = require('../os/cpu-scheduler');
 
 const router = express.Router();
 

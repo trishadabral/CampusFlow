@@ -47,7 +47,7 @@ discipline.
 - **Test system** — recruiter question builder; student test-taker UI (timed, one question at a
   time, auto-submit); instant auto-grading (`submitTest`)
 - **Interview scheduling engine** — shortlists by score (cutoff + top-N cap), then timetables
-  interviews round-robin across panels and rooms (`server/src/lib/pipeline.js`)
+  interviews round-robin across panels and rooms (`server/src/os/pipeline.js`)
 - **Student journey UI** — eligible-drives browsing, 1-click apply, visual progress tracker
   (Applied → Test → Result → Interview), My Schedule page
 - **Scheduling Lab** — CPU scheduling simulator (FCFS / Priority / Round-Robin) with Gantt charts
@@ -65,12 +65,12 @@ algorithms for interview ordering.
 exactly 10 win.
 
 **Built:**
-- **Booking critical section** — `bookSeat()` (`server/src/lib/booking.js`): one transaction,
+- **Booking critical section** — `bookSeat()` (`server/src/os/critical-section.js`): one transaction,
   `SELECT … FOR UPDATE` row lock on the slot, seat insert + counter bump atomically; the database
   lock (not app code) is the single source of truth
 - **Pipeline seat assignment** — the auto-scheduler books every test/interview seat through the
   same serialized primitive, so system-driven booking is just as safe as manual booking
-- **Lock observability** — `lock_events` table + `lib/locks.js`: every acquire/wait/release is
+- **Lock observability** — `lock_events` table + `os/locks.js`: every acquire/wait/release is
   recorded with wait times
 - **System Monitor UI** — live lock table, activity feed, stats; the demo surface for the viva
 - **Stress test** — `POST /api/monitor/stress`: fires N concurrent booking attempts and proves
@@ -89,7 +89,7 @@ exactly 10 win.
 **Built:**
 - **Resource inventory** — labs (with seating capacity), interview rooms, interviewers
   (`server/src/routes/resources.js`); admin UI to add and manage them
-- **Banker's safety check** — `lib/banker.js`: every manual booking runs the safety algorithm;
+- **Banker's safety check** — `os/banker.js`: every manual booking runs the safety algorithm;
   unsafe requests are refused *with an explanation of what would over-allocate*
 - **Admin Control Center** — all drives with stage + progress, one-click pipeline actions,
   full schedule of every test/interview session, per-applicant roster

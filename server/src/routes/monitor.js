@@ -1,9 +1,9 @@
 // Kernel Monitor routes: lock table, stats, audit activity, stress test.
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const pool = require('../db');
+const pool = require('../dbms/db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
-const { bookSeat } = require('../lib/booking');
+const { bookSeat } = require('../os/critical-section');
 
 const router = express.Router();
 
@@ -89,7 +89,7 @@ router.get('/activity', async (req, res, next) => {
 
 // POST /monitor/stress — admin fires `count` concurrent booking attempts.
 // Correctness guarantee: confirmed == min(count, seats available), because
-// every attempt serializes on the slot row lock (see lib/booking.js).
+// every attempt serializes on the slot row lock (see os/critical-section.js).
 router.post('/stress', authenticateToken, requireRole('admin'), async (req, res, next) => {
   try {
     const { slot_id, count } = req.body || {};

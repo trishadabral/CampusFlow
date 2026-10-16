@@ -1,6 +1,6 @@
 // JWT authentication + role-based authorization.
 const jwt = require('jsonwebtoken');
-const pool = require('../db');
+const pool = require('../dbms/db');
 
 function authenticateToken(req, res, next) {
   const header = req.headers['authorization'] || '';

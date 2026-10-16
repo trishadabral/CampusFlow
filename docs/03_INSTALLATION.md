@@ -153,7 +153,12 @@ is silently ignored.
 ```
 CampusFlow/
 ├── client/     React + Vite + Tailwind UI (student / recruiter / admin portals)
-├── server/     Express REST API (src/routes, src/lib)
+├── server/     Express REST API
+│   └── src/
+│       ├── os/       OS concepts: critical-section, locks, cpu-scheduler,
+│       │             banker (Banker's algorithm), pipeline (job scheduler)
+│       ├── dbms/     DBMS concepts: db pool, transactions, eligibility rules
+│       └── routes/   HTTP layer (thin — logic lives in os/ or dbms/)
 ├── database/   schema.sql (full schema) · migrate_v2.sql (upgrade script)
 ├── docs/       01_TEAM_CONTRIBUTIONS.md · 02_PHASE2_PLAN.md · 03_INSTALLATION.md
 └── docker-compose.yml   MySQL 8 container for local development

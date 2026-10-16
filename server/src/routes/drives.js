@@ -6,15 +6,16 @@
 // students only show up. Stage flow: open → testing → interviews → closed.
 
 const express = require('express');
-const pool = require('../db');
+const pool = require('../dbms/db');
 const { authenticateToken, requireRole, optionalAuth } = require('../middleware/auth');
-const { checkEligibility, parseBranches } = require('../lib/eligibility');
+const { checkEligibility, parseBranches } = require('../dbms/eligibility');
+const { withTransaction } = require('../dbms/transactions');
 const {
   scheduleTestSessions,
   publishResults,
   submitTest,
   eligibleStudents,
-} = require('../lib/pipeline');
+} = require('../os/pipeline');
 
 const router = express.Router();
 
@@ -465,7 +466,6 @@ router.post(
   authenticateToken,
   requireRole('recruiter', 'admin'),
   async (req, res, next) => {
-    const conn = await pool.getConnection();
     try {
       const drive = await getDrive(req.params.id);
       if (!drive) return res.status(404).json({ error: 'Drive not found.' });
@@ -475,23 +475,23 @@ router.post(
       const problem = validateQuestions(req.body?.questions);
       if (problem) return res.status(400).json({ error: problem });
 
-      await conn.beginTransaction();
-      await conn.query('DELETE FROM test_questions WHERE drive_id = ?', [drive.id]);
-      for (const q of req.body.questions) {
-        await conn.query(
-          `INSERT INTO test_questions (drive_id, question_text, options, correct_index, marks)
-           VALUES (?, ?, ?, ?, ?)`,
-          [drive.id, String(q.text).trim(), JSON.stringify(q.options.map((o) => String(o))),
-           q.correct_index, q.marks > 0 ? Math.floor(q.marks) : 1]
-        );
-      }
-      await conn.commit();
-      res.json({ saved: req.body.questions.length });
+      // One ACID transaction: the old set is replaced atomically —
+      // a failed insert can never leave the drive with half a test.
+      const saved = await withTransaction(async (conn) => {
+        await conn.query('DELETE FROM test_questions WHERE drive_id = ?', [drive.id]);
+        for (const q of req.body.questions) {
+          await conn.query(
+            `INSERT INTO test_questions (drive_id, question_text, options, correct_index, marks)
+             VALUES (?, ?, ?, ?, ?)`,
+            [drive.id, String(q.text).trim(), JSON.stringify(q.options.map((o) => String(o))),
+             q.correct_index, q.marks > 0 ? Math.floor(q.marks) : 1]
+          );
+        }
+        return req.body.questions.length;
+      });
+      res.json({ saved });
     } catch (err) {
-      try { await conn.rollback(); } catch (_) {}
       next(err);
-    } finally {
-      conn.release();
     }
   }
 );

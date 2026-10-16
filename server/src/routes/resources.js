@@ -1,8 +1,8 @@
 // Resource & allocation routes. Allocations run the Banker's safety check.
 const express = require('express');
-const pool = require('../db');
+const pool = require('../dbms/db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
-const { checkAllocation } = require('../lib/banker');
+const { checkAllocation } = require('../os/banker');
 
 const router = express.Router();
 

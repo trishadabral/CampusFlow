@@ -3,9 +3,9 @@
 // about: application → test session (venue/time) → result → interview.
 
 const express = require('express');
-const pool = require('../db');
+const pool = require('../dbms/db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
-const { fmtWhen } = require('./pipeline');
+const { fmtWhen } = require('../os/pipeline');
 
 const router = express.Router();
 

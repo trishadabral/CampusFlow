@@ -2,7 +2,7 @@
 // the master schedule of every test & interview session, and who is where.
 
 const express = require('express');
-const pool = require('../db');
+const pool = require('../dbms/db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 
 const router = express.Router();

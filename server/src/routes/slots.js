@@ -1,6 +1,6 @@
 // Slot routes.
 const express = require('express');
-const pool = require('../db');
+const pool = require('../dbms/db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 
 const router = express.Router();

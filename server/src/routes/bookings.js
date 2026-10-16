@@ -1,9 +1,9 @@
 // Booking routes. Booking is the critical section: all serialization
-// lives in lib/booking.js (SELECT ... FOR UPDATE in one transaction).
+// lives in os/critical-section.js (SELECT ... FOR UPDATE in one transaction).
 const express = require('express');
-const pool = require('../db');
+const pool = require('../dbms/db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
-const { bookSeat } = require('../lib/booking');
+const { bookSeat } = require('../os/critical-section');
 
 const router = express.Router();
 
@@ -73,7 +73,7 @@ router.delete('/:id', authenticateToken, async (req, res, next) => {
 
     await conn.beginTransaction();
     // Soft-cancel: keep the row for history (the ENUM has a 'cancelled' state for this).
-    // A later re-booking revives the same row in lib/booking.js.
+    // A later re-booking revives the same row in os/critical-section.js.
     await conn.query("UPDATE bookings SET status = 'cancelled' WHERE id = ?", [booking.id]);
     if (booking.status === 'confirmed') {
       await conn.query('UPDATE slots SET booked_count = booked_count - 1 WHERE id = ?', [
