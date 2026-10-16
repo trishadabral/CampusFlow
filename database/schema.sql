@@ -52,7 +52,16 @@ CREATE TABLE drives (
   max_backlogs         INT NOT NULL DEFAULT 0,
   graduation_year      INT NOT NULL,
   application_deadline DATETIME NOT NULL,
-  status               ENUM('draft','open','closed') NOT NULL DEFAULT 'open',
+  -- Pipeline configuration (v2): the system manages test & interview
+  -- sessions from these settings — the recruiter never books rooms.
+  test_date            DATE NULL,
+  interview_date       DATE NULL,
+  test_duration_min    INT NOT NULL DEFAULT 60,
+  interview_duration_min INT NOT NULL DEFAULT 20,
+  num_interviewers     INT NOT NULL DEFAULT 2,
+  min_test_score       DECIMAL(5,2) NOT NULL DEFAULT 50.00,  -- % needed to qualify
+  max_shortlist        INT NOT NULL DEFAULT 20,              -- cap on interview shortlist
+  status               ENUM('draft','open','testing','interviews','closed') NOT NULL DEFAULT 'open',
   created_by           INT NOT NULL,
   created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (company_id) REFERENCES companies(id),
@@ -65,7 +74,7 @@ CREATE TABLE applications (
   id         INT AUTO_INCREMENT PRIMARY KEY,
   drive_id   INT NOT NULL,
   student_id INT NOT NULL,                      -- FK -> students.user_id
-  status     ENUM('applied','shortlisted','rejected','selected') NOT NULL DEFAULT 'applied',
+  status     ENUM('applied','test_taken','shortlisted','rejected','selected') NOT NULL DEFAULT 'applied',
   applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_application (drive_id, student_id),
   FOREIGN KEY (drive_id)   REFERENCES drives(id)   ON DELETE CASCADE,
@@ -73,11 +82,24 @@ CREATE TABLE applications (
   INDEX idx_applications_drive (drive_id, status)
 );
 
+-- ------------------------------------------------------------ resources --
+-- Physical resources managed by the allocator (labs, rooms, interviewers).
+CREATE TABLE resources (
+  id       INT AUTO_INCREMENT PRIMARY KEY,
+  name     VARCHAR(120) NOT NULL,
+  type     ENUM('lab','room','interviewer') NOT NULL,
+  capacity INT NOT NULL DEFAULT 1 CHECK (capacity > 0),  -- seats for labs, 1 for rooms/interviewers
+  location VARCHAR(120),
+  status   ENUM('available','maintenance') NOT NULL DEFAULT 'available',
+  INDEX idx_resources_type (type, status)
+);
+
 -- ---------------------------------------------------------------- slots --
 -- Test / interview slots = schedulable resources with finite capacity.
 CREATE TABLE slots (
   id           INT AUTO_INCREMENT PRIMARY KEY,
   drive_id     INT NOT NULL,
+  resource_id  INT NULL,                          -- venue: lab for tests, room for interviews
   type         ENUM('test','interview') NOT NULL,
   title        VARCHAR(150) NOT NULL,
   starts_at    DATETIME NOT NULL,
@@ -87,7 +109,9 @@ CREATE TABLE slots (
   CHECK (booked_count <= capacity),
   CHECK (ends_at > starts_at),
   FOREIGN KEY (drive_id) REFERENCES drives(id) ON DELETE CASCADE,
-  INDEX idx_slots_drive (drive_id, starts_at)
+  FOREIGN KEY (resource_id) REFERENCES resources(id) ON DELETE SET NULL,
+  INDEX idx_slots_drive (drive_id, starts_at),
+  INDEX idx_slots_resource (resource_id)
 );
 
 -- ------------------------------------------------------------- bookings --
@@ -105,17 +129,6 @@ CREATE TABLE bookings (
   INDEX idx_bookings_slot (slot_id)
 );
 
--- ------------------------------------------------------------ resources --
--- Physical resources managed by the allocator (labs, rooms, interviewers).
-CREATE TABLE resources (
-  id       INT AUTO_INCREMENT PRIMARY KEY,
-  name     VARCHAR(120) NOT NULL,
-  type     ENUM('lab','room','interviewer') NOT NULL,
-  capacity INT NOT NULL DEFAULT 1 CHECK (capacity > 0),  -- seats for labs, 1 for rooms/interviewers
-  location VARCHAR(120),
-  status   ENUM('available','maintenance') NOT NULL DEFAULT 'available',
-  INDEX idx_resources_type (type, status)
-);
 
 -- ---------------------------------------------------------- allocations --
 CREATE TABLE allocations (
@@ -133,6 +146,52 @@ CREATE TABLE allocations (
   FOREIGN KEY (slot_id)      REFERENCES slots(id) ON DELETE SET NULL,
   FOREIGN KEY (allocated_by) REFERENCES users(id),
   INDEX idx_allocations_resource_time (resource_id, starts_at, ends_at)
+);
+
+-- ------------------------------------------------------- test_questions --
+-- Recruiter-uploaded MCQs for a drive's aptitude test.
+CREATE TABLE test_questions (
+  id            INT AUTO_INCREMENT PRIMARY KEY,
+  drive_id      INT NOT NULL,
+  question_text TEXT NOT NULL,
+  options       JSON NOT NULL,                 -- ["opt A","opt B","opt C","opt D"]
+  correct_index TINYINT NOT NULL,              -- 0..3
+  marks         INT NOT NULL DEFAULT 1,
+  created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (drive_id) REFERENCES drives(id) ON DELETE CASCADE,
+  INDEX idx_tq_drive (drive_id)
+);
+
+-- --------------------------------------------------------- test_results --
+-- One row per student per drive: the auto-graded outcome.
+CREATE TABLE test_results (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  drive_id    INT NOT NULL,
+  student_id  INT NOT NULL,                    -- FK -> students.user_id
+  score       DECIMAL(6,2) NOT NULL,
+  total       DECIMAL(6,2) NOT NULL,
+  percentage  DECIMAL(5,2) NOT NULL,
+  answers     JSON NULL,                       -- {question_id: chosen_index}
+  submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_test_result (drive_id, student_id),
+  FOREIGN KEY (drive_id)   REFERENCES drives(id)   ON DELETE CASCADE,
+  FOREIGN KEY (student_id) REFERENCES students(user_id) ON DELETE CASCADE,
+  INDEX idx_tr_drive (drive_id, percentage)
+);
+
+-- -------------------------------------------------------- notifications --
+-- In-app inbox: the system tells students about test sessions, results,
+-- and interview schedules. Links are client routes (e.g. /student/tests/3).
+CREATE TABLE notifications (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  user_id    INT NOT NULL,
+  title      VARCHAR(200) NOT NULL,
+  body       TEXT,
+  link       VARCHAR(200) NULL,
+  is_read    TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  INDEX idx_notif_user (user_id, is_read, created_at)
 );
 
 -- ------------------------------------------------------------ audit_log --

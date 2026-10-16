@@ -21,6 +21,9 @@ app.use('/api/schedule', require('./routes/schedule'));
 app.use('/api/monitor', require('./routes/monitor'));
 app.use('/api/reports', require('./routes/reports'));
 app.use('/api/users', require('./routes/users'));
+app.use('/api/student', require('./routes/student'));
+app.use('/api/notifications', require('./routes/notifications'));
+app.use('/api/admin', require('./routes/admin'));
 
 // 404 for unknown API routes
 app.use('/api', (req, res) => {

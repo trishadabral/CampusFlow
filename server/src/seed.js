@@ -171,31 +171,27 @@ async function seed(conn) {
     ]);
   }
 
-  // ---------- slots ----------
-  const [s1] = await conn.query(
-    `INSERT INTO slots (drive_id, type, title, starts_at, ends_at, capacity)
-     VALUES (?, 'test', ?, ?, ?, ?)`,
-    [drive1, 'Online Assessment — Slot A', '2026-11-03 10:00:00', '2026-11-03 12:00:00', 60]
-  );
-  await conn.query(
-    `INSERT INTO slots (drive_id, type, title, starts_at, ends_at, capacity)
-     VALUES (?, 'interview', ?, ?, ?, ?)`,
-    [drive1, 'Technical Interview — Slot A', '2026-11-05 10:00:00', '2026-11-05 13:00:00', 10]
-  );
-  await conn.query(
-    `INSERT INTO slots (drive_id, type, title, starts_at, ends_at, capacity)
-     VALUES (?, 'test', ?, ?, ?, ?)`,
-    [drive2, 'Aptitude Test', '2026-11-10 09:00:00', '2026-11-10 11:00:00', 40]
-  );
-  const testSlotA = s1.insertId;
-
-  // ---------- bookings: 2 sample bookings on the test slot ----------
-  for (const sid of studentIds.slice(0, 2)) {
-    await conn.query('INSERT INTO bookings (slot_id, student_id) VALUES (?, ?)', [
-      testSlotA,
-      sid,
-    ]);
-    await conn.query('UPDATE slots SET booked_count = booked_count + 1 WHERE id = ?', [testSlotA]);
+  // ---------- test questions (drive 1 + drive 2 ship with a ready test) ----------
+  const sampleQuestions = [
+    ['What is the time complexity of binary search on a sorted array of n elements?',
+     ['O(n)', 'O(log n)', 'O(n log n)', 'O(1)'], 1, 2],
+    ['Which of these is NOT a valid ACID property?',
+     ['Atomicity', 'Consistency', 'Isolation', 'Durability'], 0, 1],
+    ['A process is waiting for a resource held by another waiting process. This is…',
+     ['Starvation', 'Deadlock', 'Livelock', 'Thrashing'], 1, 2],
+    ['In a B+ tree of order m, what is stored in internal nodes?',
+     ['Data records', 'Only keys for routing', 'Both keys and records', 'Nothing'], 1, 2],
+    ['Which SQL clause filters groups after aggregation?',
+     ['WHERE', 'HAVING', 'GROUP BY', 'ORDER BY'], 1, 1],
+  ];
+  for (const [driveX, qs] of [[drive1, sampleQuestions], [drive2, sampleQuestions.slice(0, 3)]]) {
+    for (const [text, options, correct, marks] of qs) {
+      await conn.query(
+        `INSERT INTO test_questions (drive_id, question_text, options, correct_index, marks)
+         VALUES (?, ?, ?, ?, ?)`,
+        [driveX, text, JSON.stringify(options), correct, marks]
+      );
+    }
   }
 
   // ---------- resources ----------
@@ -218,7 +214,7 @@ async function seed(conn) {
   }
 
   console.log('Seeded: 3 users (admin+recruiters), 12 students, 2 companies, 3 drives,');
-  console.log('        24 applications, 3 slots, 2 bookings, 7 resources.');
+  console.log('        24 applications, 8 test questions, 7 resources.');
   console.log('All demo accounts use password: password123');
 }
 
