@@ -96,6 +96,8 @@ exactly 10 win.
 - **Pipeline resource wiring** — test sessions are batched into labs by capacity; interviews are
   assigned rooms round-robin, straight from the inventory
 - **Reports page** — placement progress per drive and per company (aggregate queries)
+- **Reporting queries** — `server/src/dbms/reports.js`: all aggregate queries (JOIN + GROUP BY,
+  conditional counts, the `v_drive_report` view) behind the Control Center and Reports page
 - **Summary view** — `v_drive_report`: one row per drive with applied/shortlisted/selected counts
 
 **OS concept:** resource-allocation graph, Banker's algorithm (deadlock avoidance).
