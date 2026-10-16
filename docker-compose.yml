@@ -1,0 +1,19 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: campusflow-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: campusflow
+      MYSQL_DATABASE: campusflow
+    ports:
+      - "3306:3306"
+    volumes:
+      - campusflow-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pcampusflow"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  campusflow-mysql-data:
