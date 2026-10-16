@@ -6,6 +6,80 @@ body {
   @apply bg-[#f3f5fa] text-slate-800 antialiased;
 }
 
+/* ------------------------------------------------------------------ */
+/* CampusFlow design system — one visual language for every portal.    */
+/* ------------------------------------------------------------------ */
+@layer components {
+  .cf-card {
+    @apply bg-white rounded-2xl border border-slate-200/70 p-6;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px -12px rgba(79, 70, 229, 0.12);
+  }
+  .cf-card-hover {
+    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg;
+  }
+  .cf-btn {
+    @apply inline-flex items-center justify-center gap-2 text-sm font-semibold rounded-xl px-5 py-2.5 transition-all duration-150 disabled:opacity-50 disabled:cursor-not-allowed select-none;
+  }
+  .cf-btn-primary {
+    @apply cf-btn text-white;
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    box-shadow: 0 4px 14px -4px rgba(79, 70, 229, 0.5);
+  }
+  .cf-btn-primary:hover:not(:disabled) {
+    box-shadow: 0 6px 20px -4px rgba(79, 70, 229, 0.65);
+    transform: translateY(-1px);
+  }
+  .cf-btn-secondary {
+    @apply cf-btn bg-white text-slate-700 border border-slate-200 hover:border-indigo-300 hover:text-indigo-700 hover:bg-indigo-50/50;
+  }
+  .cf-btn-danger {
+    @apply cf-btn bg-rose-600 hover:bg-rose-700 text-white;
+  }
+  .cf-btn-success {
+    @apply cf-btn bg-emerald-600 hover:bg-emerald-700 text-white;
+  }
+  .cf-input {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-shadow;
+  }
+  .cf-label {
+    @apply block text-[13px] font-semibold text-slate-700 mb-1.5;
+  }
+  .cf-hint {
+    @apply text-xs text-slate-400 mt-1;
+  }
+  .cf-section-title {
+    @apply text-base font-bold text-slate-900;
+  }
+  .cf-section-sub {
+    @apply text-sm text-slate-500 mt-0.5;
+  }
+  .cf-hero {
+    @apply rounded-2xl p-6 md:p-8 text-white relative overflow-hidden;
+    background: linear-gradient(120deg, #312e81 0%, #4f46e5 55%, #7c3aed 100%);
+  }
+  .cf-hero::after {
+    content: '';
+    position: absolute;
+    right: -60px;
+    top: -60px;
+    width: 240px;
+    height: 240px;
+    border-radius: 9999px;
+    background: radial-gradient(circle, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 70%);
+    pointer-events: none;
+  }
+  .cf-stat {
+    @apply bg-white rounded-2xl border border-slate-200/70 p-5 flex items-center gap-4;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+  }
+  .cf-chip {
+    @apply inline-flex items-center gap-1.5 text-xs font-semibold rounded-full px-3 py-1;
+  }
+  .cf-divider {
+    @apply border-t border-slate-100 my-5;
+  }
+}
+
 /* Slim, neutral scrollbars for panels and tables */
 .slim-scroll::-webkit-scrollbar {
   width: 8px;
@@ -31,3 +105,15 @@ body {
 .cf-live-dot {
   animation: cf-blink 1.6s ease-in-out infinite;
 }
+
+/* Gentle entrance for cards */
+@keyframes cf-rise {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.cf-rise {
+  animation: cf-rise 0.35s ease-out both;
+}
+.cf-rise-1 { animation-delay: 0.05s; }
+.cf-rise-2 { animation-delay: 0.1s; }
+.cf-rise-3 { animation-delay: 0.15s; }

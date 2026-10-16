@@ -1,91 +1,111 @@
-// M2 — Drives list: open placement drives with per-student eligibility badges.
+// Student drives — only drives YOU are eligible for, with one-click apply.
+// Ineligible drives are hidden: no confusion, no wasted clicks.
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { drives as drivesApi, errMsg } from '../../api.js';
-import { formatDay } from '../../utils.js';
+import { formatDate } from '../../utils.js';
 import { useToast } from '../../components/Toast.jsx';
 import Badge from '../../components/Badge.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 
+function DriveCard({ detail, index, onApplied }) {
+  const { drive, eligibility, my_application, questions_count } = detail;
+  const [applying, setApplying] = useState(false);
+  const { toast } = useToast();
+
+  const apply = async () => {
+    setApplying(true);
+    try {
+      await drivesApi.apply(drive.id);
+      toast('Applied! Your pipeline is now live on the dashboard.', 'success');
+      onApplied(drive.id);
+    } catch (err) {
+      toast(errMsg(err, 'Could not apply.'), 'error');
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  return (
+    <div className={`cf-card cf-card-hover cf-rise cf-rise-${index % 3}`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-xs text-slate-500 font-medium">{drive.company?.name}</div>
+          <Link to={`/student/drives/${drive.id}`} className="text-lg font-bold text-slate-900 hover:text-indigo-700 leading-snug">
+            {drive.title}
+          </Link>
+        </div>
+        {my_application
+          ? <Badge variant="info">Applied ✓</Badge>
+          : <Badge variant="success">Eligible ✓</Badge>}
+      </div>
+      {drive.description && <p className="text-sm text-slate-500 mt-2 line-clamp-2">{drive.description}</p>}
+      <div className="flex flex-wrap gap-2 mt-3">
+        <span className="cf-chip bg-slate-100 text-slate-600">CGPA ≥ {drive.min_cgpa}</span>
+        <span className="cf-chip bg-slate-100 text-slate-600">{(drive.allowed_branches ?? []).join(', ')}</span>
+        <span className="cf-chip bg-slate-100 text-slate-600">{questions_count ?? 0} test questions</span>
+      </div>
+      <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+        <span className="text-xs text-slate-400">Apply by {formatDate(drive.application_deadline)}</span>
+        {my_application ? (
+          <Link to={`/student/drives/${drive.id}`} className="cf-btn-secondary !py-2">Track →</Link>
+        ) : (
+          <button onClick={apply} disabled={applying} className="cf-btn-primary !py-2">
+            {applying ? 'Applying…' : 'Apply in 1 click'}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function Drives() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [drives, setDrives] = useState([]);
+  const [items, setItems] = useState([]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data } = await drivesApi.list({ status: 'open' });
-        // Enrich each drive with the student's eligibility verdict + application state.
-        const enriched = await Promise.all(
-          (data ?? []).map(async (d) => {
-            try {
-              const { data: det } = await drivesApi.get(d.id);
-              return { ...d, eligibility: det.eligibility, my_application: det.my_application };
-            } catch {
-              return d;
-            }
-          })
-        );
-        setDrives(enriched);
-      } catch (err) {
-        toast(errMsg(err, 'Could not load drives.'), 'error');
-      } finally {
-        setLoading(false);
-      }
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const load = async () => {
+    try {
+      const { data: open } = await drivesApi.list({ status: 'open' });
+      const details = await Promise.all(open.map((d) => drivesApi.get(d.id).then((r) => r.data).catch(() => null)));
+      setItems(details.filter((d) => d && d.eligibility?.eligible));
+    } catch (err) {
+      toast(errMsg(err, 'Could not load drives.'), 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading drives…</div>;
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
-  if (!drives.length) {
-    return (
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
-        <EmptyState title="No open drives right now" message="Check back soon — new placement drives appear here as recruiters publish them." />
-      </div>
-    );
-  }
+  const markApplied = (driveId) => {
+    setItems((list) => list.map((d) => d.drive.id === driveId ? { ...d, my_application: { status: 'applied' } } : d));
+  };
+
+  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Finding drives for you…</div>;
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-      {drives.map((d) => {
-        const applied = !!d.my_application;
-        const eligible = d.eligibility?.eligible;
-        return (
-          <Link
-            key={d.id}
-            to={`/student/drives/${d.id}`}
-            className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 hover:shadow-md hover:border-indigo-200 transition-all"
-          >
-            <div className="flex items-start justify-between gap-2 mb-2">
-              <div>
-                <div className="font-semibold text-slate-900">{d.title}</div>
-                <div className="text-sm text-slate-500">{d.company?.name}</div>
-              </div>
-              {applied ? (
-                <Badge variant="info">Applied</Badge>
-              ) : eligible === true ? (
-                <Badge variant="success">Eligible</Badge>
-              ) : eligible === false ? (
-                <Badge variant="danger">Not eligible</Badge>
-              ) : (
-                <Badge variant="neutral">Check eligibility</Badge>
-              )}
-            </div>
-            <div className="flex flex-wrap gap-2 text-xs text-slate-500 mt-3">
-              <span className="bg-slate-50 rounded-lg px-2.5 py-1">CGPA ≥ {d.min_cgpa ?? '—'}</span>
-              <span className="bg-slate-50 rounded-lg px-2.5 py-1">Backlogs ≤ {d.max_backlogs ?? '—'}</span>
-              {d.graduation_year && <span className="bg-slate-50 rounded-lg px-2.5 py-1">Class of {d.graduation_year}</span>}
-            </div>
-            <div className="flex items-center justify-between mt-4 text-xs text-slate-400">
-              <span>Deadline {formatDay(d.application_deadline)}</span>
-              <span>{d.counts?.applied ?? 0} applied</span>
-            </div>
-          </Link>
-        );
-      })}
+    <div className="space-y-6">
+      <div className="cf-hero cf-rise">
+        <div className="relative z-10">
+          <h2 className="text-2xl font-bold">Drives you're eligible for</h2>
+          <p className="text-indigo-100 text-sm mt-1">
+            {items.length === 0
+              ? 'Nothing matches your profile right now — check back soon.'
+              : `${items.length} drive${items.length !== 1 ? 's' : ''} match your profile. Apply, and the system schedules everything else.`}
+          </p>
+        </div>
+      </div>
+      {items.length === 0 ? (
+        <div className="cf-card">
+          <EmptyState title="No eligible drives" message="When a recruiter publishes a drive matching your CGPA, branch and backlog profile, it will appear here." />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {items.map((d, i) => <DriveCard key={d.drive.id} detail={d} index={i} onApplied={markApplied} />)}
+        </div>
+      )}
     </div>
   );
 }

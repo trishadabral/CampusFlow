@@ -1,37 +1,49 @@
-// M2 — Recruiter drive detail: criteria summary, one-click eligibility engine
-// (sp_generate_shortlist), shortlist results with per-student reasons, applications, slots.
+// Recruiter drive detail — the pipeline command view.
+// A drive flows: Applications → Test scheduled → Results → Interviews.
+// The recruiter watches it move and presses exactly two buttons; the system
+// does everything else. Tabs: eligible students, test sessions, results.
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { drives as drivesApi, slots as slotsApi, errMsg } from '../../api.js';
+import { drives as drivesApi, errMsg } from '../../api.js';
 import { formatDate } from '../../utils.js';
 import { useToast } from '../../components/Toast.jsx';
 import Badge from '../../components/Badge.jsx';
 import DataTable from '../../components/DataTable.jsx';
+import Stepper from '../../components/Stepper.jsx';
+import EmptyState from '../../components/EmptyState.jsx';
 
-const inputCls = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500';
-const labelCls = 'block text-sm font-medium text-slate-700 mb-1.5';
+const STAGE_META = {
+  open: { label: 'Accepting applications', variant: 'success' },
+  testing: { label: 'Test scheduled', variant: 'info' },
+  interviews: { label: 'Interviews scheduled', variant: 'warning' },
+  closed: { label: 'Closed', variant: 'neutral' },
+  draft: { label: 'Draft', variant: 'neutral' },
+};
+
+const STATUS_VARIANT = {
+  applied: 'info', test_taken: 'warning', shortlisted: 'success',
+  rejected: 'danger', selected: 'success',
+};
 
 export default function RecruiterDriveDetail() {
   const { id } = useParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [drive, setDrive] = useState(null);
+  const [pipeline, setPipeline] = useState(null);
   const [apps, setApps] = useState([]);
-  const [slotList, setSlotList] = useState([]);
-  const [running, setRunning] = useState(false);
-  const [shortlistedCount, setShortlistedCount] = useState(null);
-  const [savingSlot, setSavingSlot] = useState(false);
-  const [slotForm, setSlotForm] = useState({ type: 'test', title: '', starts_at: '', ends_at: '', capacity: '30' });
+  const [tab, setTab] = useState('students');
+  const [busy, setBusy] = useState(null);
 
   const load = async () => {
     try {
-      const [{ data: d }, { data: a }, { data: s }] = await Promise.all([
-        drivesApi.get(id), drivesApi.applications(id), slotsApi.list(id),
+      const [{ data: d }, { data: p }, { data: a }] = await Promise.all([
+        drivesApi.get(id), drivesApi.pipeline(id), drivesApi.applications(id),
       ]);
       setDrive(d.drive ?? d);
+      setPipeline(p);
       setApps(a ?? []);
-      setSlotList(s ?? []);
     } catch (err) {
       toast(errMsg(err, 'Could not load this drive.'), 'error');
     } finally {
@@ -41,164 +53,193 @@ export default function RecruiterDriveDetail() {
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [id]);
 
-  const runEngine = async () => {
-    setRunning(true);
-    setShortlistedCount(null);
+  const scheduleTests = async () => {
+    setBusy('tests');
     try {
-      const { data } = await drivesApi.shortlist(id);
-      setShortlistedCount(data.shortlisted ?? 0);
-      toast(`Eligibility engine shortlisted ${data.shortlisted ?? 0} students.`, 'success');
-      const { data: a } = await drivesApi.applications(id);
-      setApps(a ?? []);
+      const { data } = await drivesApi.scheduleTests(id);
+      toast(`Scheduled ${data.sessions} test session${data.sessions !== 1 ? 's' : ''} for ${data.assigned} students.`, 'success');
+      load();
     } catch (err) {
-      toast(errMsg(err, 'The eligibility engine failed to run.'), 'error');
+      toast(errMsg(err, 'Could not schedule test sessions.'), 'error');
     } finally {
-      setRunning(false);
+      setBusy(null);
     }
   };
 
-  const createSlot = async (e) => {
-    e.preventDefault();
-    if (!slotForm.title.trim() || !slotForm.starts_at || !slotForm.ends_at) {
-      toast('Fill in the slot title, start and end time.', 'error');
-      return;
-    }
-    setSavingSlot(true);
+  const publishResults = async () => {
+    setBusy('results');
     try {
-      await slotsApi.create({
-        drive_id: Number(id),
-        type: slotForm.type,
-        title: slotForm.title.trim(),
-        starts_at: slotForm.starts_at,
-        ends_at: slotForm.ends_at,
-        capacity: Number(slotForm.capacity),
-      });
-      toast('Slot published. Students can book it now.', 'success');
-      setSlotForm({ type: 'test', title: '', starts_at: '', ends_at: '', capacity: '30' });
-      const { data: s } = await slotsApi.list(id);
-      setSlotList(s ?? []);
+      const { data } = await drivesApi.publishResults(id);
+      toast(`Shortlisted ${data.shortlisted} students and built ${data.interviews} interview slots.`, 'success');
+      load();
     } catch (err) {
-      toast(errMsg(err, 'Could not create the slot.'), 'error');
+      toast(errMsg(err, 'Could not publish results.'), 'error');
     } finally {
-      setSavingSlot(false);
+      setBusy(null);
+    }
+  };
+
+  const markSelected = async (studentId, name) => {
+    try {
+      await drivesApi.markSelected(id, studentId);
+      toast(`${name} marked as selected.`, 'success');
+      const { data: a } = await drivesApi.applications(id);
+      setApps(a ?? []);
+    } catch (err) {
+      toast(errMsg(err, 'Could not mark as selected.'), 'error');
     }
   };
 
   if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading drive…</div>;
   if (!drive) return <div className="text-sm text-slate-500 py-10 text-center">Drive not found.</div>;
 
-  const passCount = apps.filter((a) => a.eligible).length;
+  const stage = pipeline?.stage ?? drive.status;
+  const stageIdx = { open: 0, testing: 1, interviews: 2, closed: 3, draft: 0 }[stage] ?? 0;
+  const pipeSteps = [
+    { key: 'apply', label: 'Applications', state: stageIdx > 0 ? 'done' : 'current', detail: `${pipeline?.applied ?? 0} applied` },
+    { key: 'test', label: 'Test', state: stageIdx > 1 ? 'done' : stageIdx === 1 ? 'current' : 'todo', detail: pipeline?.test_sessions ? `${pipeline.test_sessions} sessions` : drive.test_date ? formatDate(drive.test_date).split(',')[0] : '' },
+    { key: 'result', label: 'Results', state: stageIdx > 2 ? 'done' : stageIdx === 2 ? 'current' : 'todo', detail: pipeline?.tests_taken ? `${pipeline.tests_taken} taken` : '' },
+    { key: 'interview', label: 'Interviews', state: stageIdx >= 3 ? 'done' : stageIdx === 2 ? 'current' : 'todo', detail: pipeline?.interviews ? `${pipeline.interviews} slots` : '' },
+  ];
+
+  const canScheduleTests = stage === 'open' && (pipeline?.applied ?? 0) > 0 && (pipeline?.questions ?? 0) > 0;
+  const canPublish = stage === 'testing' && (pipeline?.tests_taken ?? 0) > 0;
 
   return (
     <div className="space-y-6">
-      {/* Header + criteria */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+      {/* Header */}
+      <div className="cf-card cf-rise">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
             <div className="text-sm text-slate-500">{drive.company?.name}</div>
-            <h2 className="text-xl font-bold text-slate-900">{drive.title}</h2>
-          </div>
-          <Badge variant={drive.status === 'open' ? 'success' : 'neutral'}>{drive.status}</Badge>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm mt-4">
-          {[
-            ['Minimum CGPA', drive.min_cgpa ?? '—'],
-            ['Max backlogs', drive.max_backlogs ?? '—'],
-            ['Graduation year', drive.graduation_year ?? '—'],
-            ['Branches', (drive.allowed_branches ?? []).join(', ') || 'All'],
-          ].map(([k, v]) => (
-            <div key={k} className="bg-slate-50 rounded-xl px-4 py-3">
-              <div className="text-xs text-slate-500 uppercase tracking-wide">{k}</div>
-              <div className="font-semibold text-slate-900 mt-0.5">{v}</div>
+            <h2 className="text-2xl font-bold text-slate-900">{drive.title}</h2>
+            <div className="flex gap-2 mt-2 flex-wrap">
+              <Badge variant={STAGE_META[stage]?.variant ?? 'neutral'}>{STAGE_META[stage]?.label ?? stage}</Badge>
+              <span className="cf-chip bg-slate-100 text-slate-600">CGPA ≥ {drive.min_cgpa}</span>
+              <span className="cf-chip bg-slate-100 text-slate-600">{(drive.allowed_branches ?? []).join(', ')}</span>
+              <span className="cf-chip bg-slate-100 text-slate-600">≤{drive.max_backlogs} backlogs</span>
             </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Eligibility engine */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-        <div className="flex items-center justify-between gap-4 flex-wrap mb-4">
-          <div>
-            <h3 className="font-semibold text-slate-900">Eligibility engine</h3>
-            <p className="text-sm text-slate-500 mt-0.5">
-              Runs <span className="font-mono-tight">sp_generate_shortlist()</span> — a single indexed query
-              that evaluates every applicant and records why each one passed or failed.
-            </p>
           </div>
-          <button onClick={runEngine} disabled={running}
-            className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl px-5 py-2.5 transition-colors">
-            {running ? 'Running…' : 'Run eligibility engine'}
-          </button>
+          <div className="flex gap-2">
+            {stage === 'open' && (
+              <button onClick={scheduleTests} disabled={!canScheduleTests || busy} className="cf-btn-primary" title={!canScheduleTests ? 'Needs applicants and test questions first' : ''}>
+                {busy === 'tests' ? 'Scheduling…' : '⚙️ Schedule test sessions'}
+              </button>
+            )}
+            {stage === 'testing' && (
+              <button onClick={publishResults} disabled={!canPublish || busy} className="cf-btn-success" title={!canPublish ? 'Waiting for students to take the test' : ''}>
+                {busy === 'results' ? 'Publishing…' : '📊 Publish results & schedule interviews'}
+              </button>
+            )}
+          </div>
         </div>
-        {shortlistedCount !== null && (
-          <div className="mb-4 bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 text-sm text-emerald-800">
-            <span className="font-bold text-lg">{shortlistedCount}</span> students shortlisted
-            <span className="text-emerald-600"> — the table below shows the per-student verdict and reasons.</span>
+        <div className="mt-6 max-w-2xl"><Stepper steps={pipeSteps} /></div>
+        {stage === 'open' && (pipeline?.questions ?? 0) === 0 && (
+          <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-900">
+            No test questions yet — add them before scheduling. (Drives created with the wizard always have them.)
           </div>
         )}
-        <DataTable
-          emptyHint="No applications yet — students haven't applied to this drive."
-          columns={[
-            { key: 'student', label: 'Student', render: (a) => <span className="font-medium text-slate-900">{a.student?.name ?? '—'}</span> },
-            { key: 'branch', label: 'Branch', render: (a) => a.student?.branch ?? '—' },
-            { key: 'cgpa', label: 'CGPA', render: (a) => a.student?.cgpa ?? '—' },
-            { key: 'verdict', label: 'Verdict', render: (a) => a.eligible ? <Badge variant="success">Pass</Badge> : <Badge variant="danger">Fail</Badge> },
-            { key: 'reasons', label: 'Reasons', render: (a) => <span className="text-slate-500 text-[13px]">{(a.fail_reasons ?? []).join('; ') || (a.eligible ? 'Meets all criteria' : '—')}</span>, className: 'max-w-xs' },
-            { key: 'status', label: 'Status', render: (a) => <Badge variant={a.status === 'shortlisted' ? 'success' : 'neutral'}>{a.status}</Badge> },
-          ]}
-          rows={apps}
-        />
-        {apps.length > 0 && <p className="text-xs text-slate-400 mt-3">{passCount} of {apps.length} applicants pass the criteria.</p>}
       </div>
 
-      {/* Slot management */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-        <h3 className="font-semibold text-slate-900 mb-4">Manage slots</h3>
-        <form onSubmit={createSlot} className="grid grid-cols-1 md:grid-cols-6 gap-3 mb-6">
-          <div className="md:col-span-2">
-            <label className={labelCls}>Title</label>
-            <input value={slotForm.title} onChange={(e) => setSlotForm({ ...slotForm, title: e.target.value })} placeholder="Aptitude test — Batch A" className={inputCls} />
+      {/* Stats */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {[
+          ['Applied', pipeline?.applied ?? 0, 'indigo'],
+          ['Tests taken', pipeline?.tests_taken ?? 0, 'amber'],
+          ['Avg score', pipeline?.avg_score != null ? `${pipeline.avg_score}%` : '—', 'violet'],
+          ['Shortlisted', pipeline?.shortlisted ?? 0, 'emerald'],
+          ['Interviews', pipeline?.interviews ?? 0, 'rose'],
+        ].map(([label, value, accent], i) => (
+          <div key={label} className={`cf-stat cf-rise cf-rise-${i}`}>
+            <div>
+              <div className="text-2xl font-bold text-slate-900">{value}</div>
+              <div className="text-xs text-slate-500 font-medium mt-0.5">{label}</div>
+            </div>
           </div>
-          <div>
-            <label className={labelCls}>Type</label>
-            <select value={slotForm.type} onChange={(e) => setSlotForm({ ...slotForm, type: e.target.value })} className={inputCls}>
-              <option value="test">Test</option>
-              <option value="interview">Interview</option>
-            </select>
-          </div>
-          <div>
-            <label className={labelCls}>Starts</label>
-            <input type="datetime-local" value={slotForm.starts_at} onChange={(e) => setSlotForm({ ...slotForm, starts_at: e.target.value })} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Ends</label>
-            <input type="datetime-local" value={slotForm.ends_at} onChange={(e) => setSlotForm({ ...slotForm, ends_at: e.target.value })} className={inputCls} />
-          </div>
-          <div>
-            <label className={labelCls}>Capacity</label>
-            <input type="number" min="1" value={slotForm.capacity} onChange={(e) => setSlotForm({ ...slotForm, capacity: e.target.value })} className={inputCls} />
-          </div>
-          <div className="md:col-span-6">
-            <button type="submit" disabled={savingSlot} className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl px-5 py-2.5">
-              {savingSlot ? 'Publishing…' : 'Publish slot'}
+        ))}
+      </div>
+
+      {/* Tabs */}
+      <div className="cf-card cf-rise">
+        <div className="flex gap-1 border-b border-slate-100 mb-5">
+          {[
+            ['students', `Eligible students (${apps.filter((a) => a.eligible).length})`],
+            ['results', 'Test results'],
+            ['config', 'Interview config'],
+          ].map(([key, label]) => (
+            <button
+              key={key} onClick={() => setTab(key)}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${tab === key ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+            >
+              {label}
             </button>
-          </div>
-        </form>
-        {slotList.length === 0 ? (
-          <p className="text-sm text-slate-500">No slots yet. Publish the first one above.</p>
-        ) : (
-          <ul className="space-y-2">
-            {slotList.map((s) => (
-              <li key={s.id} className="border border-slate-100 rounded-xl px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
-                <div>
-                  <span className="font-medium text-slate-900">{s.title}</span>
-                  <span className="ml-2"><Badge variant={s.type === 'interview' ? 'info' : 'neutral'}>{s.type}</Badge></span>
-                  <div className="text-xs text-slate-500 mt-0.5">{formatDate(s.starts_at)} → {formatDate(s.ends_at)}</div>
-                </div>
-                <span className="text-sm text-slate-500">{s.booked_count ?? 0}/{s.capacity} booked</span>
-              </li>
+          ))}
+        </div>
+
+        {tab === 'students' && (
+          apps.length === 0 ? (
+            <EmptyState title="No applications yet" message="Once students apply, everyone passing your eligibility criteria shows up here automatically." />
+          ) : (
+            <DataTable
+              columns={[
+                { key: 'student', label: 'Student', render: (a) => <span className="font-medium text-slate-900">{a.student?.name}</span> },
+                { key: 'roll', label: 'Roll no', render: (a) => a.student?.roll_no ?? '—' },
+                { key: 'branch', label: 'Branch', render: (a) => a.student?.branch ?? '—' },
+                { key: 'cgpa', label: 'CGPA', render: (a) => a.student?.cgpa ?? '—' },
+                { key: 'score', label: 'Test %', render: (a) => a.test_percentage != null ? <span className="font-semibold">{Number(a.test_percentage).toFixed(1)}%</span> : <span className="text-slate-300">—</span> },
+                { key: 'status', label: 'Status', render: (a) => <Badge variant={STATUS_VARIANT[a.status] ?? 'neutral'}>{a.status.replace('_', ' ')}</Badge> },
+                {
+                  key: 'action', label: '', render: (a) => a.status === 'shortlisted' ? (
+                    <button onClick={() => markSelected(a.student.id, a.student.name)} className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 border border-emerald-200 hover:border-emerald-300 rounded-lg px-3 py-1.5 bg-emerald-50">
+                      Mark selected ✓
+                    </button>
+                  ) : null,
+                },
+              ]}
+              rows={apps}
+            />
+          )
+        )}
+
+        {tab === 'results' && (
+          (() => {
+            const taken = apps.filter((a) => a.test_percentage != null).sort((x, y) => y.test_percentage - x.test_percentage)
+              .map((a, i) => ({ ...a, rank: i + 1 }));
+            return taken.length === 0 ? (
+              <EmptyState title="No results yet" message="Scores appear here automatically as students submit their tests." />
+            ) : (
+              <DataTable
+                columns={[
+                  { key: 'rank', label: '#', render: (a) => <span className="font-bold text-slate-400">{a.rank}</span> },
+                  { key: 'student', label: 'Student', render: (a) => <span className="font-medium text-slate-900">{a.student?.name}</span> },
+                  { key: 'score', label: 'Score', render: (a) => <span className="font-bold text-indigo-700">{Number(a.test_percentage).toFixed(1)}%</span> },
+                  { key: 'cutoff', label: `Cutoff ${drive.min_test_score}%`, render: (a) => a.test_percentage >= drive.min_test_score ? <Badge variant="success">Above</Badge> : <Badge variant="danger">Below</Badge> },
+                  { key: 'status', label: 'Status', render: (a) => <Badge variant={STATUS_VARIANT[a.status] ?? 'neutral'}>{a.status.replace('_', ' ')}</Badge> },
+                ]}
+                rows={taken}
+              />
+            );
+          })()
+        )}
+
+        {tab === 'config' && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            {[
+              ['Interview panels', drive.num_interviewers],
+              ['Qualifying score', `${drive.min_test_score}%`],
+              ['Shortlist cap', drive.max_shortlist],
+              ['Interview length', `${drive.interview_duration_min} min`],
+              ['Test date', drive.test_date ? formatDate(drive.test_date) : '—'],
+              ['Interview date', drive.interview_date ? formatDate(drive.interview_date) : 'auto (test + 3 days)'],
+              ['Test duration', `${drive.test_duration_min} min`],
+              ['Apply by', formatDate(drive.application_deadline)],
+            ].map(([k, v]) => (
+              <div key={k} className="bg-slate-50 rounded-xl px-4 py-3">
+                <div className="text-xs text-slate-500 uppercase tracking-wide font-semibold">{k}</div>
+                <div className="font-bold text-slate-900 mt-0.5">{v}</div>
+              </div>
             ))}
-          </ul>
+          </div>
         )}
       </div>
     </div>

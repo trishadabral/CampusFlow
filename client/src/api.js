@@ -35,9 +35,39 @@ export const drives = {
   list: (params) => api.get('/drives', { params }),
   get: (id) => api.get(`/drives/${id}`),
   create: (data) => api.post('/drives', data),
-  shortlist: (id) => api.post(`/drives/${id}/shortlist`),
   applications: (id) => api.get(`/drives/${id}/applications`),
   apply: (id) => api.post(`/drives/${id}/apply`),
+  eligibleStudents: (id) => api.get(`/drives/${id}/eligible-students`),
+  previewEligibility: (criteria) => api.post('/drives/preview-eligibility', criteria),
+  pipeline: (id) => api.get(`/drives/${id}/pipeline`),
+  scheduleTests: (id) => api.post(`/drives/${id}/schedule-tests`),
+  publishResults: (id) => api.post(`/drives/${id}/publish-results`),
+  markSelected: (id, student_id) => api.post(`/drives/${id}/select`, { student_id }),
+  // Test questions (recruiter)
+  saveQuestions: (id, questions) => api.post(`/drives/${id}/questions`, { questions }),
+  getQuestions: (id) => api.get(`/drives/${id}/questions`),
+  // Test taking (student)
+  getTest: (id) => api.get(`/drives/${id}/test`),
+  submitTest: (id, answers) => api.post(`/drives/${id}/test/submit`, { answers }),
+};
+
+// --- Student journey ---
+export const student = {
+  journey: () => api.get('/student/journey'),
+};
+
+// --- Notifications ---
+export const notifications = {
+  list: () => api.get('/notifications'),
+  readAll: () => api.post('/notifications/read-all'),
+  markRead: (id) => api.patch(`/notifications/${id}/read`),
+};
+
+// --- Admin control center ---
+export const admin = {
+  overview: () => api.get('/admin/overview'),
+  schedule: () => api.get('/admin/schedule'),
+  roster: (driveId) => api.get(`/admin/drive/${driveId}/roster`),
 };
 
 // --- Slots & bookings (M3) ---

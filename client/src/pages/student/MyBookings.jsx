@@ -1,77 +1,78 @@
-// M3 — My bookings: table of the student's slot bookings + cancel.
+// My Schedule — every test session and interview the system assigned to you.
+// Nothing to book or cancel: the pipeline places you, and tells you where.
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { bookings as bookingsApi, errMsg } from '../../api.js';
 import { formatDate } from '../../utils.js';
 import { useToast } from '../../components/Toast.jsx';
-import DataTable from '../../components/DataTable.jsx';
 import Badge from '../../components/Badge.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 
 export default function MyBookings() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [rows, setRows] = useState([]);
-  const [cancelling, setCancelling] = useState(null);
+  const [items, setItems] = useState([]);
 
-  const load = async () => {
-    try {
-      const { data } = await bookingsApi.mine();
-      setRows(data ?? []);
-    } catch (err) {
-      toast(errMsg(err, 'Could not load your bookings.'), 'error');
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    bookingsApi.mine()
+      .then(({ data }) => {
+        const now = Date.now();
+        setItems((data ?? []).sort((a, b) => new Date(a.slot.starts_at) - new Date(b.slot.starts_at)));
+      })
+      .catch((err) => toast(errMsg(err, 'Could not load your schedule.'), 'error'))
+      .finally(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading your schedule…</div>;
 
-  const cancel = async (id) => {
-    if (!window.confirm('Cancel this booking? Your seat will be released.')) return;
-    setCancelling(id);
-    try {
-      await bookingsApi.cancel(id);
-      toast('Booking cancelled. The seat is now free.', 'success');
-      setRows((r) => r.filter((b) => b.id !== id));
-    } catch (err) {
-      toast(errMsg(err, 'Could not cancel this booking.'), 'error');
-    } finally {
-      setCancelling(null);
-    }
-  };
+  const upcoming = items.filter((b) => new Date(b.slot.starts_at).getTime() >= Date.now());
+  const past = items.filter((b) => new Date(b.slot.starts_at).getTime() < Date.now());
 
-  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading bookings…</div>;
+  const card = (b, i) => (
+    <div key={b.id} className={`cf-card cf-rise cf-rise-${i % 3} !p-5 flex items-center gap-4`}>
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 ${b.slot.type === 'test' ? 'bg-indigo-100' : 'bg-emerald-100'}`}>
+        {b.slot.type === 'test' ? '📝' : '🎤'}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="font-bold text-slate-900 truncate">{b.slot.title}</div>
+        <div className="text-sm text-slate-500">{formatDate(b.slot.starts_at)} → {formatDate(b.slot.ends_at)}</div>
+      </div>
+      <div className="text-right shrink-0">
+        <Badge variant={b.slot.type === 'test' ? 'info' : 'success'}>{b.slot.type}</Badge>
+        {b.slot.type === 'test' && new Date(b.slot.starts_at).getTime() >= Date.now() && (
+          <Link to={`/student/tests/${b.slot.drive_id}`} className="block text-xs font-bold text-indigo-600 hover:text-indigo-800 mt-1.5">
+            Take test →
+          </Link>
+        )}
+      </div>
+    </div>
+  );
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
-      {rows.length === 0 ? (
-        <EmptyState
-          title="No bookings yet"
-          message="Your test and interview seats will show up here."
-          action={<Link to="/student/drives" className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl px-4 py-2 inline-block">Browse drives</Link>}
-        />
+    <div className="space-y-6 max-w-3xl">
+      <div>
+        <h2 className="cf-section-title text-lg">Upcoming</h2>
+        <p className="cf-section-sub">Sessions the system scheduled for you. Just show up.</p>
+      </div>
+      {upcoming.length === 0 ? (
+        <div className="cf-card">
+          <EmptyState
+            title="Nothing scheduled yet"
+            message="Apply to a drive and your test session will appear here automatically."
+            action={<Link to="/student/drives" className="cf-btn-primary">Find drives</Link>}
+          />
+        </div>
       ) : (
-        <DataTable
-          columns={[
-            { key: 'slot', label: 'Slot', render: (b) => <span className="font-medium text-slate-900">{b.slot?.title ?? '—'}</span> },
-            { key: 'type', label: 'Type', render: (b) => <Badge variant={b.slot?.type === 'interview' ? 'info' : 'neutral'}>{b.slot?.type ?? '—'}</Badge> },
-            { key: 'when', label: 'When', render: (b) => formatDate(b.slot?.starts_at) },
-            { key: 'status', label: 'Status', render: (b) => <Badge variant={b.status === 'confirmed' ? 'success' : 'neutral'}>{b.status}</Badge> },
-            {
-              key: 'actions', label: '', render: (b) => (
-                <button
-                  onClick={() => cancel(b.id)} disabled={cancelling === b.id}
-                  className="text-sm font-medium text-rose-600 hover:text-rose-700 disabled:opacity-50"
-                >
-                  {cancelling === b.id ? 'Cancelling…' : 'Cancel'}
-                </button>
-              ),
-            },
-          ]}
-          rows={rows}
-        />
+        <div className="space-y-3">{upcoming.map(card)}</div>
+      )}
+
+      {past.length > 0 && (
+        <>
+          <h2 className="cf-section-title text-lg pt-2">Past</h2>
+          <div className="space-y-3 opacity-75">{past.map(card)}</div>
+        </>
       )}
     </div>
   );

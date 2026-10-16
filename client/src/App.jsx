@@ -10,9 +10,11 @@ import StudentDashboard from './pages/student/StudentDashboard.jsx';
 import Drives from './pages/student/Drives.jsx';
 import DriveDetail from './pages/student/DriveDetail.jsx';
 import MyBookings from './pages/student/MyBookings.jsx';
+import TestTaker from './pages/student/TestTaker.jsx';
 import RecruiterDashboard from './pages/recruiter/RecruiterDashboard.jsx';
 import MyDrives from './pages/recruiter/MyDrives.jsx';
 import RecruiterDriveDetail from './pages/recruiter/RecruiterDriveDetail.jsx';
+import NewDriveWizard from './pages/recruiter/NewDriveWizard.jsx';
 import AdminDashboard from './pages/admin/AdminDashboard.jsx';
 import KernelMonitor from './pages/admin/KernelMonitor.jsx';
 import SchedulingLab from './pages/admin/SchedulingLab.jsx';
@@ -45,12 +47,14 @@ export default function App() {
         <Route index element={<StudentDashboard />} />
         <Route path="drives" element={<Drives />} />
         <Route path="drives/:id" element={<DriveDetail />} />
+        <Route path="tests/:driveId" element={<TestTaker />} />
         <Route path="bookings" element={<MyBookings />} />
       </Route>
 
       <Route path="/recruiter" element={<ProtectedRoute role="recruiter"><Layout /></ProtectedRoute>}>
         <Route index element={<RecruiterDashboard />} />
         <Route path="drives" element={<MyDrives />} />
+        <Route path="drives/new" element={<NewDriveWizard />} />
         <Route path="drives/:id" element={<RecruiterDriveDetail />} />
       </Route>
 

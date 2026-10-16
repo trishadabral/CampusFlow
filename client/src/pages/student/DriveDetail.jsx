@@ -1,31 +1,25 @@
-// M2 — Drive detail: criteria, my eligibility verdict with reasons, apply, slots with booking.
+// Student drive detail — criteria, eligibility verdict, apply, and (once
+// applied) your live pipeline: test session venue, result, interview slot.
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { drives as drivesApi, slots as slotsApi, bookings as bookingsApi, errMsg } from '../../api.js';
-import { formatDate, formatDay } from '../../utils.js';
+import { useParams, Link } from 'react-router-dom';
+import { drives as drivesApi, errMsg } from '../../api.js';
+import { formatDate } from '../../utils.js';
 import { useToast } from '../../components/Toast.jsx';
 import Badge from '../../components/Badge.jsx';
+import Stepper from '../../components/Stepper.jsx';
 
 export default function DriveDetail() {
   const { id } = useParams();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
-  const [drive, setDrive] = useState(null);
-  const [eligibility, setEligibility] = useState(null);
-  const [myApp, setMyApp] = useState(null);
-  const [slotList, setSlotList] = useState([]);
+  const [data, setData] = useState(null);
   const [applying, setApplying] = useState(false);
-  const [bookingId, setBookingId] = useState(null);
 
   const load = async () => {
     try {
-      const { data } = await drivesApi.get(id);
-      setDrive(data.drive ?? data);
-      setEligibility(data.eligibility ?? null);
-      setMyApp(data.my_application ?? null);
-      const { data: s } = await slotsApi.list(id);
-      setSlotList(s ?? []);
+      const { data: d } = await drivesApi.get(id);
+      setData(d);
     } catch (err) {
       toast(errMsg(err, 'Could not load this drive.'), 'error');
     } finally {
@@ -38,129 +32,115 @@ export default function DriveDetail() {
   const apply = async () => {
     setApplying(true);
     try {
-      const { data } = await drivesApi.apply(id);
-      setMyApp(data.application ?? data);
-      toast('Application submitted. Good luck!', 'success');
+      await drivesApi.apply(id);
+      toast('Applied! Track your pipeline from the dashboard.', 'success');
       load();
     } catch (err) {
-      const reasons = err?.response?.data?.reasons;
-      toast(reasons?.length ? `Not eligible: ${reasons.join('; ')}` : errMsg(err, 'Could not submit your application.'), 'error');
+      toast(errMsg(err, 'Could not apply.'), 'error');
     } finally {
       setApplying(false);
     }
   };
 
-  const book = async (slotId) => {
-    setBookingId(slotId);
-    try {
-      await bookingsApi.create(slotId);
-      toast('Seat booked — see you there!', 'success');
-      load();
-    } catch (err) {
-      toast(errMsg(err, 'Could not book this slot.'), 'error');
-    } finally {
-      setBookingId(null);
-    }
-  };
-
   if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading drive…</div>;
-  if (!drive) return <div className="text-sm text-slate-500 py-10 text-center">Drive not found.</div>;
+  if (!data?.drive) return <div className="text-sm text-slate-500 py-10 text-center">Drive not found.</div>;
 
-  const eligible = eligibility?.eligible;
+  const { drive, eligibility, my_application, my_result, my_sessions = [], questions_count } = data;
+  const testSession = my_sessions.find((s) => s.type === 'test');
+  const interview = my_sessions.find((s) => s.type === 'interview');
+
+  const steps = [
+    { key: 'applied', label: 'Applied', state: my_application ? 'done' : 'current' },
+    { key: 'test', label: 'Test', state: testSession ? (my_result ? 'done' : 'current') : 'todo' },
+    { key: 'result', label: 'Result', state: my_result ? 'done' : 'todo' },
+    { key: 'interview', label: 'Interview', state: interview ? 'current' : 'todo' },
+  ];
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <div className="text-sm text-slate-500">{drive.company?.name}</div>
-            <h2 className="text-xl font-bold text-slate-900">{drive.title}</h2>
-            <p className="text-sm text-slate-600 mt-2 max-w-2xl">{drive.description}</p>
-          </div>
-          <Badge variant={drive.status === 'open' ? 'success' : 'neutral'}>{drive.status}</Badge>
-        </div>
-      </div>
-
-      {/* Eligibility verdict */}
-      <div className={`rounded-2xl shadow-sm border p-6 ${eligible === false ? 'bg-rose-50/60 border-rose-100' : eligible ? 'bg-emerald-50/60 border-emerald-100' : 'bg-white border-slate-100'}`}>
-        <div className="flex items-center gap-3 mb-3">
-          <h3 className="font-semibold text-slate-900">Your eligibility</h3>
-          {myApp ? <Badge variant="info">Applied</Badge>
-            : eligible === true ? <Badge variant="success">Eligible</Badge>
-            : eligible === false ? <Badge variant="danger">Not eligible</Badge>
-            : <Badge variant="neutral">Unknown</Badge>}
-        </div>
-        {eligibility?.reasons?.length > 0 ? (
-          <ul className="text-sm text-slate-600 space-y-1 list-disc list-inside">
-            {eligibility.reasons.map((r, i) => <li key={i}>{r}</li>)}
-          </ul>
-        ) : eligible === true && (
-          <p className="text-sm text-slate-600">You meet every criterion. Go ahead and apply.</p>
-        )}
-        {!myApp && eligible === true && (
-          <button onClick={apply} disabled={applying}
-            className="mt-4 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl px-5 py-2.5 transition-colors">
-            {applying ? 'Submitting…' : 'Apply now'}
-          </button>
-        )}
-      </div>
-
-      {/* Criteria */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-        <h3 className="font-semibold text-slate-900 mb-4">Eligibility criteria</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+    <div className="space-y-6 max-w-3xl">
+      <div className="cf-card cf-rise">
+        <div className="text-sm text-slate-500">{drive.company?.name}</div>
+        <h2 className="text-2xl font-bold text-slate-900">{drive.title}</h2>
+        {drive.description && <p className="text-sm text-slate-500 mt-2">{drive.description}</p>}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mt-5 text-sm">
           {[
-            ['Minimum CGPA', drive.min_cgpa ?? '—'],
-            ['Max backlogs', drive.max_backlogs ?? '—'],
-            ['Graduation year', drive.graduation_year ?? '—'],
-            ['Branches', (drive.allowed_branches ?? []).join(', ') || 'All'],
+            ['Minimum CGPA', drive.min_cgpa], ['Branches', (drive.allowed_branches ?? []).join(', ')],
+            ['Max backlogs', drive.max_backlogs], ['Apply by', formatDate(drive.application_deadline).split(',')[0]],
           ].map(([k, v]) => (
             <div key={k} className="bg-slate-50 rounded-xl px-4 py-3">
-              <div className="text-xs text-slate-500 uppercase tracking-wide">{k}</div>
-              <div className="font-semibold text-slate-900 mt-0.5">{v}</div>
+              <div className="text-[11px] text-slate-500 uppercase tracking-wide font-semibold">{k}</div>
+              <div className="font-bold text-slate-900 mt-0.5">{v}</div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Slots */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-        <h3 className="font-semibold text-slate-900 mb-4">Test & interview slots</h3>
-        {slotList.length === 0 ? (
-          <p className="text-sm text-slate-500">No slots published for this drive yet.</p>
-        ) : (
-          <ul className="space-y-3">
-            {slotList.map((s) => {
-              const pct = s.capacity ? Math.round(((s.capacity - (s.seats_left ?? 0)) / s.capacity) * 100) : 0;
-              const full = (s.seats_left ?? 0) <= 0;
-              return (
-                <li key={s.id} className="border border-slate-100 rounded-xl p-4 flex items-center justify-between gap-4 flex-wrap">
-                  <div className="min-w-0">
-                    <div className="font-medium text-slate-900 flex items-center gap-2">
-                      {s.title} <Badge variant={s.type === 'interview' ? 'info' : 'neutral'}>{s.type}</Badge>
-                    </div>
-                    <div className="text-sm text-slate-500 mt-0.5">{formatDate(s.starts_at)} → {formatDate(s.ends_at)}</div>
-                    <div className="mt-2 w-56">
-                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full ${full ? 'bg-rose-500' : 'bg-indigo-500'}`} style={{ width: `${pct}%` }} />
-                      </div>
-                      <div className="text-xs text-slate-400 mt-1">{s.seats_left} of {s.capacity} seats left</div>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => book(s.id)} disabled={full || bookingId === s.id}
-                    className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl px-4 py-2 transition-colors"
-                  >
-                    {full ? 'Full' : bookingId === s.id ? 'Booking…' : 'Book seat'}
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-        <p className="text-xs text-slate-400 mt-4">Deadline to apply: {formatDay(drive.application_deadline)}</p>
-      </div>
+      {!my_application ? (
+        <div className="cf-card cf-rise">
+          {eligibility?.eligible ? (
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div>
+                <div className="font-bold text-emerald-700">✓ You're eligible for this drive</div>
+                <p className="text-sm text-slate-500 mt-0.5">One click applies you. Test: {questions_count ?? 0} questions, {drive.test_duration_min} min.</p>
+              </div>
+              <button onClick={apply} disabled={applying} className="cf-btn-primary">
+                {applying ? 'Applying…' : 'Apply in 1 click'}
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div className="font-bold text-rose-700">You're not eligible for this drive</div>
+              <ul className="text-sm text-slate-500 mt-2 list-disc pl-5 space-y-0.5">
+                {(eligibility?.reasons ?? []).map((r, i) => <li key={i}>{r}</li>)}
+              </ul>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="cf-card cf-rise space-y-5">
+          <div className="flex items-center justify-between">
+            <h3 className="cf-section-title">Your pipeline</h3>
+            <Badge variant="info">{(my_application.status ?? 'applied').replace('_', ' ')}</Badge>
+          </div>
+          <Stepper steps={steps} />
+
+          {testSession && (
+            <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4">
+              <div className="font-bold text-indigo-900 text-sm">📍 Your test session</div>
+              <div className="text-sm text-indigo-800 mt-1">
+                {testSession.title} · {formatDate(testSession.starts_at)}
+              </div>
+              {!my_result && (
+                <Link to={`/student/tests/${drive.id}`} className="cf-btn-primary !py-2 mt-3">✍️ Take the test now</Link>
+              )}
+            </div>
+          )}
+
+          {my_result && (
+            <div className={`rounded-2xl p-4 border ${Number(my_result.percentage) >= Number(drive.min_test_score) ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+              <div className="font-bold text-sm text-slate-900">📊 Your result: {Number(my_result.percentage).toFixed(1)}%</div>
+              <div className="text-sm text-slate-500 mt-0.5">
+                {Number(my_result.score)}/{Number(my_result.total)} marks · cutoff {drive.min_test_score}%
+              </div>
+            </div>
+          )}
+
+          {interview && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+              <div className="font-bold text-emerald-900 text-sm">🎤 Your interview is scheduled</div>
+              <div className="text-sm text-emerald-800 mt-1">
+                {interview.title}{interview.venue ? ` · ${interview.venue}` : ''} · {formatDate(interview.starts_at)}
+              </div>
+            </div>
+          )}
+
+          {!testSession && (
+            <p className="text-sm text-slate-500 bg-slate-50 rounded-xl px-4 py-3">
+              🕐 Your test session will be scheduled automatically and appear here — plus a notification.
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
 }

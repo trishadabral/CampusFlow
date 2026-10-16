@@ -1,5 +1,7 @@
-// M4 — Resources: inventory grouped by type + allocation board with the
-// Banker's safety check. Unsafe requests are refused WITH an explanation.
+// Admin resources — the physical inventory the pipeline runs on.
+// Labs (with capacity) feed the test-session auto-scheduler; interview rooms
+// feed the interview timetable. Add them here; the system does the rest.
+// The manual allocation board below still runs the Banker's safety check.
 
 import React, { useEffect, useState } from 'react';
 import { resources as resourcesApi, allocations as allocationsApi, errMsg } from '../../api.js';
@@ -8,10 +10,12 @@ import { useToast } from '../../components/Toast.jsx';
 import Badge from '../../components/Badge.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 
-const inputCls = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500';
-const labelCls = 'block text-sm font-medium text-slate-700 mb-1.5';
-
-const TYPE_BADGE = { lab: 'info', room: 'success', interviewer: 'warning', computer: 'neutral' };
+const TYPE_BADGE = { lab: 'info', room: 'success', interviewer: 'warning' };
+const TYPE_HINT = {
+  lab: 'Test sessions are auto-batched into labs by capacity, biggest first.',
+  room: 'Interviews are assigned to rooms round-robin.',
+  interviewer: 'Named interviewers for manual reference.',
+};
 
 export default function Resources() {
   const { toast } = useToast();
@@ -19,15 +23,18 @@ export default function Resources() {
   const [resources, setResources] = useState([]);
   const [allocs, setAllocs] = useState([]);
   const [saving, setSaving] = useState(false);
-  const [verdict, setVerdict] = useState(null); // { ok, message, explanation }
-  const [form, setForm] = useState({ resource_id: '', purpose: '', seats_needed: '10', starts_at: '', ends_at: '' });
+  const [allocating, setAllocating] = useState(false);
+  const [verdict, setVerdict] = useState(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ name: '', type: 'lab', capacity: '40', location: '' });
+  const [allocForm, setAllocForm] = useState({ resource_id: '', purpose: '', seats_needed: '10', starts_at: '', ends_at: '' });
 
   const load = async () => {
     try {
       const [{ data: r }, { data: a }] = await Promise.all([resourcesApi.list(), allocationsApi.list()]);
       setResources(r ?? []);
       setAllocs(a ?? []);
-      if ((r ?? []).length && !form.resource_id) setForm((f) => ({ ...f, resource_id: String(r[0].id) }));
+      if ((r ?? []).length && !allocForm.resource_id) setAllocForm((f) => ({ ...f, resource_id: String(r[0].id) }));
     } catch (err) {
       toast(errMsg(err, 'Could not load resources.'), 'error');
     } finally {
@@ -37,35 +44,55 @@ export default function Resources() {
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
+  const addResource = async (e) => {
+    e.preventDefault();
+    if (!form.name.trim()) { toast('Give the resource a name.', 'error'); return; }
+    setSaving(true);
+    try {
+      await resourcesApi.create({
+        name: form.name.trim(),
+        type: form.type,
+        capacity: Math.max(1, Number(form.capacity) || 1),
+        location: form.location.trim() || null,
+      });
+      toast(`${form.name.trim()} added to inventory.`, 'success');
+      setForm({ name: '', type: 'lab', capacity: '40', location: '' });
+      setShowAdd(false);
+      load();
+    } catch (err) {
+      toast(errMsg(err, 'Could not add the resource.'), 'error');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const allocate = async (e) => {
     e.preventDefault();
-    if (!form.purpose.trim() || !form.starts_at || !form.ends_at) {
+    if (!allocForm.purpose.trim() || !allocForm.starts_at || !allocForm.ends_at) {
       toast('Fill in purpose, start and end time.', 'error');
       return;
     }
-    setSaving(true);
+    setAllocating(true);
     setVerdict(null);
     try {
-      // Contract fields only: resource_id, purpose, starts_at, ends_at.
       await allocationsApi.create({
-        resource_id: Number(form.resource_id),
-        purpose: form.purpose.trim(),
-        starts_at: form.starts_at,
-        ends_at: form.ends_at,
+        resource_id: Number(allocForm.resource_id),
+        purpose: allocForm.purpose.trim(),
+        starts_at: allocForm.starts_at,
+        ends_at: allocForm.ends_at,
       });
       setVerdict({ ok: true, message: 'Allocation granted — the safety check found a safe sequence.' });
-      setForm((f) => ({ ...f, purpose: '', starts_at: '', ends_at: '' }));
+      setAllocForm((f) => ({ ...f, purpose: '', starts_at: '', ends_at: '' }));
       load();
     } catch (err) {
       if (err?.response?.status === 409) {
-        // The Banker's check said no — surface its explanation, not a raw error.
         const explanation = err?.response?.data?.explanation || err?.response?.data?.error;
         setVerdict({ ok: false, message: 'Allocation refused by the safety check.', explanation });
       } else {
         toast(errMsg(err, 'Could not create the allocation.'), 'error');
       }
     } finally {
-      setSaving(false);
+      setAllocating(false);
     }
   };
 
@@ -76,92 +103,127 @@ export default function Resources() {
     (m[t] = m[t] || []).push(r);
     return m;
   }, {});
+  const labSeats = (grouped.lab ?? []).reduce((s, r) => s + Number(r.capacity || 0), 0);
 
   return (
     <div className="space-y-6">
-      {/* Allocate form */}
-      <form onSubmit={allocate} className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-        <h2 className="font-semibold text-slate-900 mb-1">New allocation</h2>
-        <p className="text-xs text-slate-500 mb-4">
-          Every request runs a <span className="font-semibold">Banker's-algorithm safety check</span> first.
-          Unsafe requests are refused — with the reason why.
-        </p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* Inventory header + add */}
+      <div className="cf-card cf-rise">
+        <div className="flex items-center justify-between mb-1">
           <div>
-            <label className={labelCls}>Resource</label>
-            <select value={form.resource_id} onChange={(e) => setForm({ ...form, resource_id: e.target.value })} className={inputCls}>
+            <h2 className="cf-section-title">Inventory</h2>
+            <p className="cf-section-sub">
+              {grouped.lab?.length ?? 0} labs · <b>{labSeats}</b> test seats · {grouped.room?.length ?? 0} interview rooms.
+              The pipeline schedules against this inventory automatically.
+            </p>
+          </div>
+          <button onClick={() => setShowAdd((v) => !v)} className="cf-btn-primary">+ Add resource</button>
+        </div>
+
+        {showAdd && (
+          <form onSubmit={addResource} className="mt-4 p-5 bg-indigo-50/60 border border-indigo-100 rounded-2xl grid grid-cols-1 md:grid-cols-5 gap-3 cf-rise">
+            <div className="md:col-span-2">
+              <label className="cf-label">Name</label>
+              <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Lab C" className="cf-input" />
+            </div>
+            <div>
+              <label className="cf-label">Type</label>
+              <select value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} className="cf-input">
+                <option value="lab">Lab (test venue)</option>
+                <option value="room">Interview room</option>
+                <option value="interviewer">Interviewer</option>
+              </select>
+            </div>
+            <div>
+              <label className="cf-label">Capacity</label>
+              <input type="number" min="1" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} className="cf-input" />
+            </div>
+            <div>
+              <label className="cf-label">Location</label>
+              <input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} placeholder="Block / floor" className="cf-input" />
+            </div>
+            <div className="md:col-span-5 flex items-center gap-3">
+              <button type="submit" disabled={saving} className="cf-btn-primary !py-2">{saving ? 'Adding…' : 'Add to inventory'}</button>
+              <span className="text-xs text-slate-500">{TYPE_HINT[form.type]}</span>
+            </div>
+          </form>
+        )}
+
+        <div className="mt-5 space-y-5">
+          {resources.length === 0 ? (
+            <EmptyState title="No resources registered" message="Add labs and interview rooms above — the pipeline needs them to schedule sessions." />
+          ) : (
+            Object.entries(grouped).map(([type, list]) => (
+              <div key={type}>
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-sm font-bold text-slate-700">{titleCase(type)}s</h3>
+                  <Badge variant={TYPE_BADGE[type] ?? 'neutral'}>{list.length}</Badge>
+                </div>
+                <p className="text-xs text-slate-400 mb-2">{TYPE_HINT[type]}</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {list.map((r) => (
+                    <div key={r.id} className="border border-slate-200 rounded-xl px-4 py-3.5 hover:border-indigo-200 hover:shadow-sm transition-all">
+                      <div className="flex items-center justify-between">
+                        <div className="font-bold text-slate-900">{r.name}</div>
+                        <Badge variant={r.status === 'available' ? 'success' : 'warning'}>{r.status ?? 'available'}</Badge>
+                      </div>
+                      <div className="text-xs text-slate-500 mt-1">
+                        {type === 'lab' ? `${r.capacity} seats` : type === 'room' ? '1 room' : `Capacity ${r.capacity}`}{r.location ? ` · ${r.location}` : ''}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Manual allocation with Banker's check */}
+      <div className="cf-card cf-rise">
+        <h2 className="cf-section-title">Manual allocation</h2>
+        <p className="cf-section-sub mb-4">
+          For one-off bookings outside the pipeline. Every request runs a <b>Banker's-algorithm safety check</b> first — unsafe requests are refused with the reason why.
+        </p>
+        <form onSubmit={allocate} className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="cf-label">Resource</label>
+            <select value={allocForm.resource_id} onChange={(e) => setAllocForm({ ...allocForm, resource_id: e.target.value })} className="cf-input">
               {resources.map((r) => <option key={r.id} value={r.id}>{r.name} ({titleCase(r.type)}, cap {r.capacity})</option>)}
             </select>
           </div>
           <div>
-            <label className={labelCls}>Purpose</label>
-            <input value={form.purpose} onChange={(e) => setForm({ ...form, purpose: e.target.value })} placeholder="Aptitude test — Batch A" className={inputCls} />
+            <label className="cf-label">Purpose</label>
+            <input value={allocForm.purpose} onChange={(e) => setAllocForm({ ...allocForm, purpose: e.target.value })} placeholder="Workshop — Batch A" className="cf-input" />
           </div>
           <div>
-            <label className={labelCls}>Seats needed</label>
-            <input type="number" min="1" value={form.seats_needed} onChange={(e) => setForm({ ...form, seats_needed: e.target.value })} className={inputCls} />
+            <label className="cf-label">Seats needed</label>
+            <input type="number" min="1" value={allocForm.seats_needed} onChange={(e) => setAllocForm({ ...allocForm, seats_needed: e.target.value })} className="cf-input" />
           </div>
           <div>
-            <label className={labelCls}>Starts</label>
-            <input type="datetime-local" value={form.starts_at} onChange={(e) => setForm({ ...form, starts_at: e.target.value })} className={inputCls} />
+            <label className="cf-label">Starts</label>
+            <input type="datetime-local" value={allocForm.starts_at} onChange={(e) => setAllocForm({ ...allocForm, starts_at: e.target.value })} className="cf-input" />
           </div>
           <div>
-            <label className={labelCls}>Ends</label>
-            <input type="datetime-local" value={form.ends_at} onChange={(e) => setForm({ ...form, ends_at: e.target.value })} className={inputCls} />
+            <label className="cf-label">Ends</label>
+            <input type="datetime-local" value={allocForm.ends_at} onChange={(e) => setAllocForm({ ...allocForm, ends_at: e.target.value })} className="cf-input" />
           </div>
           <div className="flex items-end">
-            <button type="submit" disabled={saving || resources.length === 0}
-              className="bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl px-5 py-2.5 w-full">
-              {saving ? 'Checking safety…' : 'Request allocation'}
+            <button type="submit" disabled={allocating || resources.length === 0} className="cf-btn-primary w-full">
+              {allocating ? 'Checking safety…' : 'Request allocation'}
             </button>
           </div>
-        </div>
-
+        </form>
         {verdict && (
           <div className={`mt-4 rounded-xl px-4 py-3 text-sm border ${verdict.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>
             <div className="font-semibold">{verdict.message}</div>
             {verdict.explanation && <p className="mt-1 text-[13px]">{verdict.explanation}</p>}
           </div>
         )}
-      </form>
-
-      {/* Inventory grouped by type */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-        <h2 className="font-semibold text-slate-900 mb-4">Inventory</h2>
-        {resources.length === 0 ? (
-          <EmptyState title="No resources registered" message="Labs, rooms, interviewers and computers will be listed here once added." />
-        ) : (
-          <div className="space-y-5">
-            {Object.entries(grouped).map(([type, list]) => (
-              <div key={type}>
-                <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-sm font-semibold text-slate-700">{titleCase(type)}s</h3>
-                  <Badge variant={TYPE_BADGE[type] ?? 'neutral'}>{list.length}</Badge>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {list.map((r) => (
-                    <div key={r.id} className="border border-slate-100 rounded-xl px-4 py-3">
-                      <div className="font-medium text-slate-900">{r.name}</div>
-                      <div className="text-xs text-slate-500 mt-0.5">
-                        Capacity {r.capacity}{r.location ? ` · ${r.location}` : ''}
-                      </div>
-                      <div className="mt-2">
-                        <Badge variant={r.status === 'available' ? 'success' : 'warning'}>{r.status ?? 'available'}</Badge>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Allocation board */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-        <h2 className="font-semibold text-slate-900 mb-4">Allocation board</h2>
+        <div className="cf-divider" />
+        <h3 className="text-sm font-bold text-slate-700 mb-3">Allocation board</h3>
         {allocs.length === 0 ? (
-          <p className="text-sm text-slate-500">No allocations yet.</p>
+          <p className="text-sm text-slate-500">No manual allocations yet.</p>
         ) : (
           <ul className="space-y-2">
             {allocs.map((a) => (
