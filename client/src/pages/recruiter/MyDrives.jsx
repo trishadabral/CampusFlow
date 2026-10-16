@@ -30,11 +30,11 @@ export default function MyDrives() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <p className="text-sm text-slate-500">{drives.length} drive{drives.length !== 1 && 's'} total</p>
-        <Link to="/recruiter/drives/new" className="cf-btn-primary">+ New drive</Link>
+        <Link to="/recruiter/drives/new" className="cf-btn-primary">Add Drive</Link>
       </div>
       <div className="cf-card !p-2 cf-rise">
         {drives.length === 0 ? (
-          <EmptyState title="No drives yet" message="Create your first drive to start the pipeline." />
+          <EmptyState title="No drives yet" message="Add your first drive to get started." />
         ) : (
           <DataTable
             columns={[

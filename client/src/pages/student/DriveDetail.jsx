@@ -33,7 +33,7 @@ export default function DriveDetail() {
     setApplying(true);
     try {
       await drivesApi.apply(id);
-      toast('Applied! Track your pipeline from the dashboard.', 'success');
+      toast('Applied! Track it under My Applications.', 'success');
       load();
     } catch (err) {
       toast(errMsg(err, 'Could not apply.'), 'error');
@@ -99,14 +99,14 @@ export default function DriveDetail() {
       ) : (
         <div className="cf-card cf-rise space-y-5">
           <div className="flex items-center justify-between">
-            <h3 className="cf-section-title">Your pipeline</h3>
+            <h3 className="cf-section-title">Your progress</h3>
             <Badge variant="info">{(my_application.status ?? 'applied').replace('_', ' ')}</Badge>
           </div>
           <Stepper steps={steps} />
 
           {testSession && (
             <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4">
-              <div className="font-bold text-indigo-900 text-sm">📍 Your test session</div>
+              <div className="font-bold text-indigo-900 text-sm">📍 Your test</div>
               <div className="text-sm text-indigo-800 mt-1">
                 {testSession.title} · {formatDate(testSession.starts_at)}
               </div>

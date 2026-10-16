@@ -18,7 +18,7 @@ function DriveCard({ detail, index, onApplied }) {
     setApplying(true);
     try {
       await drivesApi.apply(drive.id);
-      toast('Applied! Your pipeline is now live on the dashboard.', 'success');
+      toast('Applied! Track it under My Applications.', 'success');
       onApplied(drive.id);
     } catch (err) {
       toast(errMsg(err, 'Could not apply.'), 'error');

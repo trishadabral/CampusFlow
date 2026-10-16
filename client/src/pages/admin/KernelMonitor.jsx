@@ -53,7 +53,7 @@ export default function KernelMonitor() {
         setActivity(a ?? []);
         setLockError(null);
       } catch (err) {
-        if (alive) setLockError(errMsg(err, 'Could not reach the kernel monitor.'));
+        if (alive) setLockError(errMsg(err, 'Could not reach the system monitor.'));
       }
     };
     fetchAll();

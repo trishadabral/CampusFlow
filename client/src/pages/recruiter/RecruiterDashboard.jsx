@@ -39,7 +39,7 @@ function DriveCard({ drive, index }) {
       </div>
       <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
         <span className="text-xs text-slate-400">CGPA ≥ {drive.min_cgpa} · {(drive.allowed_branches ?? []).join(', ')}</span>
-        <span className="text-sm font-semibold text-indigo-600">Open pipeline →</span>
+        <span className="text-sm font-semibold text-indigo-600">Manage →</span>
       </div>
     </Link>
   );
@@ -67,14 +67,14 @@ export default function RecruiterDashboard() {
       <div className="cf-hero cf-rise">
         <div className="relative z-10 flex items-center justify-between gap-4 flex-wrap">
           <div>
-            <h2 className="text-2xl font-bold">Hiring pipeline</h2>
+            <h2 className="text-2xl font-bold">Hiring dashboard</h2>
             <p className="text-indigo-100 text-sm mt-1 max-w-lg">
               Create a drive, add test questions, set three interview numbers — the system
               schedules every test and interview for you.
             </p>
           </div>
           <Link to="/recruiter/drives/new" className="bg-white text-indigo-700 font-bold text-sm rounded-xl px-5 py-3 shadow-lg hover:-translate-y-px transition-transform">
-            + New drive
+            Add Drive
           </Link>
         </div>
       </div>
@@ -84,7 +84,7 @@ export default function RecruiterDashboard() {
           <EmptyState
             title="No drives yet"
             message="Your first drive takes about two minutes: details, test questions, interview setup — then publish."
-            action={<Link to="/recruiter/drives/new" className="cf-btn-primary">Create your first drive</Link>}
+            action={<Link to="/recruiter/drives/new" className="cf-btn-primary">Add your first drive</Link>}
           />
         </div>
       ) : (

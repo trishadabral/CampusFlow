@@ -63,9 +63,9 @@ export default function Login() {
           </h2>
           <ul className="space-y-5">
             {[
-              ['One-click eligibility', 'Recruiters set criteria once — a stored procedure builds the shortlist, with a reason for every student.'],
-              ['Conflict-free booking', 'Interview slots serialize on real database locks. Run 100 students at 10 seats — exactly 10 win.'],
-              ['A kernel you can watch', 'Live lock table, process queues and transaction log. Every OS concept, demoable, not claimed.'],
+              ['One-click eligibility', 'Recruiters set the criteria once — the system builds the shortlist, with a reason for every student.'],
+              ['No double-booking, ever', 'Seats are assigned safely even when hundreds of students apply at once — no two students ever get the same seat.'],
+              ['Watch it work live', 'A live dashboard shows every booking, queue and change as it happens.'],
             ].map(([t, d]) => (
               <li key={t} className="flex gap-4">
                 <span className="mt-1 w-6 h-6 rounded-full bg-indigo-600/30 flex items-center justify-center shrink-0">

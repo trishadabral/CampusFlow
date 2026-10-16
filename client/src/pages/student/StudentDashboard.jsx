@@ -89,7 +89,7 @@ export default function StudentDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading your journey…</div>;
+  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading your applications…</div>;
 
   const firstName = user?.name?.split(' ')[0] ?? 'there';
 
@@ -101,7 +101,7 @@ export default function StudentDashboard() {
           <p className="text-indigo-100 text-sm mt-1 max-w-xl">
             {journey.length === 0
               ? 'No applications yet. Find a drive you’re eligible for and apply in one click — we handle every test and interview schedule.'
-              : `You have ${journey.length} active application${journey.length !== 1 ? 's' : ''}. Follow each pipeline below — your test venues and interview slots appear here automatically.`}
+              : `You have ${journey.length} active application${journey.length !== 1 ? 's' : ''}. Follow each one below — your test venue and time, your result, and your interview slot appear here automatically.`}
           </p>
           <div className="flex gap-3 mt-4 flex-wrap">
             <Link to="/student/drives" className="bg-white text-indigo-700 font-bold text-sm rounded-xl px-5 py-2.5 shadow-lg hover:-translate-y-px transition-transform">
@@ -117,8 +117,8 @@ export default function StudentDashboard() {
       {journey.length === 0 ? (
         <div className="cf-card">
           <EmptyState
-            title="Your journey starts here"
-            message="Apply to a drive and watch your pipeline grow: test session → result → interview, all scheduled for you."
+            title="No applications yet"
+            message="Apply to a drive and track everything here: your test venue and time, your result, and your interview slot."
             action={<Link to="/student/drives" className="cf-btn-primary">Browse drives</Link>}
           />
         </div>

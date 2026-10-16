@@ -311,7 +311,7 @@ export default function NewDriveWizard() {
         <div className="cf-card cf-rise space-y-5">
           <div>
             <h2 className="cf-section-title">Interview setup</h2>
-            <p className="cf-section-sub">Three numbers. The system builds the entire interview timetable from them.</p>
+            <p className="cf-section-sub">Three numbers. The system plans all the interviews from them.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="border border-slate-200 rounded-2xl p-5">

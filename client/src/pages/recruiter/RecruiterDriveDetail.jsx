@@ -60,7 +60,7 @@ export default function RecruiterDriveDetail() {
       toast(`Scheduled ${data.sessions} test session${data.sessions !== 1 ? 's' : ''} for ${data.assigned} students.`, 'success');
       load();
     } catch (err) {
-      toast(errMsg(err, 'Could not schedule test sessions.'), 'error');
+      toast(errMsg(err, 'Could not schedule tests.'), 'error');
     } finally {
       setBusy(null);
     }
@@ -123,12 +123,12 @@ export default function RecruiterDriveDetail() {
           <div className="flex gap-2">
             {stage === 'open' && (
               <button onClick={scheduleTests} disabled={!canScheduleTests || busy} className="cf-btn-primary" title={!canScheduleTests ? 'Needs applicants and test questions first' : ''}>
-                {busy === 'tests' ? 'Scheduling…' : '⚙️ Schedule test sessions'}
+                {busy === 'tests' ? 'Scheduling…' : 'Schedule tests'}
               </button>
             )}
             {stage === 'testing' && (
               <button onClick={publishResults} disabled={!canPublish || busy} className="cf-btn-success" title={!canPublish ? 'Waiting for students to take the test' : ''}>
-                {busy === 'results' ? 'Publishing…' : '📊 Publish results & schedule interviews'}
+                {busy === 'results' ? 'Publishing…' : 'Publish results'}
               </button>
             )}
           </div>
@@ -164,8 +164,8 @@ export default function RecruiterDriveDetail() {
         <div className="flex gap-1 border-b border-slate-100 mb-5">
           {[
             ['students', `Eligible students (${apps.filter((a) => a.eligible).length})`],
-            ['results', 'Test results'],
-            ['config', 'Interview config'],
+            ['results', 'Results'],
+            ['config', 'Interview settings'],
           ].map(([key, label]) => (
             <button
               key={key} onClick={() => setTab(key)}
@@ -191,7 +191,7 @@ export default function RecruiterDriveDetail() {
                 {
                   key: 'action', label: '', render: (a) => a.status === 'shortlisted' ? (
                     <button onClick={() => markSelected(a.student.id, a.student.name)} className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 border border-emerald-200 hover:border-emerald-300 rounded-lg px-3 py-1.5 bg-emerald-50">
-                      Mark selected ✓
+                      Select ✓
                     </button>
                   ) : null,
                 },

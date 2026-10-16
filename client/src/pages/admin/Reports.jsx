@@ -62,10 +62,10 @@ export default function Reports() {
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-        <h2 className="font-semibold text-slate-900 mb-1">Placement funnel — all drives</h2>
+        <h2 className="font-semibold text-slate-900 mb-1">Placement progress — all drives</h2>
         <p className="text-xs text-slate-500 mb-4">Aggregated from the database with GROUP BY joins, per drive.</p>
         {rows.length === 0 ? (
-          <EmptyState title="No data yet" message="Once drives collect applications, the funnel appears here." />
+          <EmptyState title="No data yet" message="Once drives collect applications, the progress bars appear here." />
         ) : (
           <Funnel {...totals} />
         )}
@@ -80,7 +80,7 @@ export default function Reports() {
           columns={[
             { key: 'drive', label: 'Drive', render: (r) => <span className="font-medium text-slate-900">{r.drive_title}</span> },
             { key: 'company', label: 'Company', render: (r) => r.company ?? '—' },
-            { key: 'funnel', label: 'Funnel', render: (r) => <Funnel applied={r.applied ?? 0} shortlisted={r.shortlisted ?? 0} selected={r.selected ?? 0} /> },
+            { key: 'progress', label: 'Progress', render: (r) => <Funnel applied={r.applied ?? 0} shortlisted={r.shortlisted ?? 0} selected={r.selected ?? 0} /> },
             { key: 'avg', label: 'Avg CGPA (shortlisted)', render: (r) => (r.avg_cgpa_shortlisted != null ? Number(r.avg_cgpa_shortlisted).toFixed(2) : '—') },
           ]}
           rows={rows}

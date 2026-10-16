@@ -102,7 +102,7 @@ export default function AdminDashboard() {
       {/* Drive pipelines */}
       <div className="cf-card cf-rise !p-2">
         <div className="px-5 pt-4 pb-2 flex items-center justify-between">
-          <h3 className="cf-section-title">Drive pipelines</h3>
+          <h3 className="cf-section-title">All drives</h3>
           <Link to="/admin/resources" className="text-sm font-semibold text-indigo-600 hover:text-indigo-800">Manage resources →</Link>
         </div>
         {drives.length === 0 ? (
@@ -114,14 +114,14 @@ export default function AdminDashboard() {
                 <span className="font-semibold text-slate-900">{d.title}<span className="block text-xs font-normal text-slate-400">{d.company}</span></span>
               )},
               { key: 'stage', label: 'Stage', render: (d) => <Badge variant={STAGE_META[d.stage]?.variant ?? 'neutral'}>{STAGE_META[d.stage]?.label ?? d.stage}</Badge> },
-              { key: 'funnel', label: 'Funnel', render: (d) => (
+              { key: 'progress', label: 'Progress', render: (d) => (
                 <span className="text-[13px] text-slate-600 whitespace-nowrap">
                   <b className="text-slate-900">{d.applied}</b> applied → <b className="text-slate-900">{d.tests_taken}</b> tested → <b className="text-slate-900">{d.shortlisted}</b> shortlisted
                 </span>
               )},
-              { key: 'sessions', label: 'Sessions', render: (d) => <span className="text-[13px]">{d.test_sessions} test · {d.interview_slots} int.</span> },
+              { key: 'sessions', label: 'Scheduled', render: (d) => <span className="text-[13px]">{d.test_sessions} tests · {d.interview_slots} interviews</span> },
               {
-                key: 'action', label: 'Next action', render: (d) => d.next_action ? (
+                key: 'action', label: 'Next step', render: (d) => d.next_action ? (
                   <button
                     onClick={() => runAction(d, d.next_action)}
                     disabled={!!busy}
@@ -145,7 +145,7 @@ export default function AdminDashboard() {
       <div className="cf-card cf-rise">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="cf-section-title">Master timetable</h3>
+            <h3 className="cf-section-title">Full schedule</h3>
             <p className="cf-section-sub">Every upcoming test & interview session, across all drives.</p>
           </div>
           <Link to="/admin/resources" className="text-sm font-semibold text-indigo-600 hover:text-indigo-800">Resources →</Link>

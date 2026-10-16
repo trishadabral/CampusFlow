@@ -16,11 +16,11 @@ const NAV = {
   recruiter: [
     { to: '/recruiter', label: 'Dashboard', end: true },
     { to: '/recruiter/drives', label: 'My Drives' },
-    { to: '/recruiter/drives/new', label: '+ New Drive', highlight: true },
+    { to: '/recruiter/drives/new', label: 'Add Drive', highlight: true },
   ],
   admin: [
     { to: '/admin', label: 'Control Center', end: true },
-    { to: '/admin/monitor', label: 'Kernel Monitor' },
+    { to: '/admin/monitor', label: 'System Monitor' },
     { to: '/admin/scheduling', label: 'Scheduling Lab' },
     { to: '/admin/resources', label: 'Resources' },
     { to: '/admin/reports', label: 'Reports' },
@@ -29,9 +29,9 @@ const NAV = {
 };
 
 const TITLES = {
-  '/student': 'My Journey', '/student/drives': 'Find Drives', '/student/bookings': 'My Schedule',
-  '/recruiter': 'Dashboard', '/recruiter/drives': 'My Drives', '/recruiter/drives/new': 'New Drive',
-  '/admin': 'Control Center', '/admin/monitor': 'Kernel Monitor', '/admin/scheduling': 'Scheduling Lab',
+  '/student': 'My Applications', '/student/drives': 'Find Drives', '/student/bookings': 'My Schedule',
+  '/recruiter': 'Dashboard', '/recruiter/drives': 'My Drives', '/recruiter/drives/new': 'Add Drive',
+  '/admin': 'Control Center', '/admin/monitor': 'System Monitor', '/admin/scheduling': 'Scheduling Lab',
   '/admin/resources': 'Resources', '/admin/reports': 'Reports', '/admin/users': 'Users',
 };
 
@@ -102,7 +102,7 @@ export default function Layout() {
           ))}
         </nav>
         <div className="px-5 py-5 border-t border-white/10">
-          <div className="text-[11px] text-slate-500 uppercase tracking-wide mb-1">OS kernel v2 · Phase 1</div>
+          <div className="text-[11px] text-slate-500 uppercase tracking-wide mb-1">CampusFlow v2</div>
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <span className="w-2 h-2 rounded-full bg-emerald-400 cf-live-dot" />
             All systems nominal

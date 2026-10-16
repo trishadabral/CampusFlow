@@ -81,15 +81,15 @@ export default function Resources() {
         starts_at: allocForm.starts_at,
         ends_at: allocForm.ends_at,
       });
-      setVerdict({ ok: true, message: 'Allocation granted — the safety check found a safe sequence.' });
+      setVerdict({ ok: true, message: 'Booked — the safety check passed.' });
       setAllocForm((f) => ({ ...f, purpose: '', starts_at: '', ends_at: '' }));
       load();
     } catch (err) {
       if (err?.response?.status === 409) {
         const explanation = err?.response?.data?.explanation || err?.response?.data?.error;
-        setVerdict({ ok: false, message: 'Allocation refused by the safety check.', explanation });
+        setVerdict({ ok: false, message: 'Booking refused by the safety check.', explanation });
       } else {
-        toast(errMsg(err, 'Could not create the allocation.'), 'error');
+        toast(errMsg(err, 'Could not book the resource.'), 'error');
       }
     } finally {
       setAllocating(false);
@@ -179,11 +179,12 @@ export default function Resources() {
         </div>
       </div>
 
-      {/* Manual allocation with Banker's check */}
+      {/* Manual booking with safety check */}
       <div className="cf-card cf-rise">
-        <h2 className="cf-section-title">Manual allocation</h2>
+        <h2 className="cf-section-title">Manual booking</h2>
         <p className="cf-section-sub mb-4">
-          For one-off bookings outside the pipeline. Every request runs a <b>Banker's-algorithm safety check</b> first — unsafe requests are refused with the reason why.
+          For one-off bookings outside the automatic scheduling. Every request is safety-checked first —
+          if it would overbook a resource, it's refused with the reason why.
         </p>
         <form onSubmit={allocate} className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -210,7 +211,7 @@ export default function Resources() {
           </div>
           <div className="flex items-end">
             <button type="submit" disabled={allocating || resources.length === 0} className="cf-btn-primary w-full">
-              {allocating ? 'Checking safety…' : 'Request allocation'}
+              {allocating ? 'Checking…' : 'Book resource'}
             </button>
           </div>
         </form>
@@ -221,9 +222,9 @@ export default function Resources() {
           </div>
         )}
         <div className="cf-divider" />
-        <h3 className="text-sm font-bold text-slate-700 mb-3">Allocation board</h3>
+        <h3 className="text-sm font-bold text-slate-700 mb-3">Booking board</h3>
         {allocs.length === 0 ? (
-          <p className="text-sm text-slate-500">No manual allocations yet.</p>
+          <p className="text-sm text-slate-500">No manual bookings yet.</p>
         ) : (
           <ul className="space-y-2">
             {allocs.map((a) => (
@@ -234,7 +235,7 @@ export default function Resources() {
                     {a.resource?.name ?? 'Resource'} · {formatDate(a.starts_at)} → {formatDate(a.ends_at)}
                   </div>
                 </div>
-                <Badge variant="info">allocated</Badge>
+                <Badge variant="info">booked</Badge>
               </li>
             ))}
           </ul>
