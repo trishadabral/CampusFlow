@@ -8,6 +8,7 @@
 const pool = require('../dbms/db');
 const { bookSeat } = require('./critical-section');
 const { findEligibleStudents } = require('../dbms/eligibility');
+const { recordTestResult } = require('../dbms/transactions');
 
 function httpError(status, message) {
   const err = new Error(message);
@@ -346,16 +347,9 @@ async function submitTest(driveId, studentId, answers) {
   }
   const percentage = total ? Math.round((score / total) * 1000) / 100 : 0;
 
-  await pool.query(
-    `INSERT INTO test_results (drive_id, student_id, score, total, percentage, answers)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [driveId, studentId, score, total, percentage, JSON.stringify(answers || {})]
-  );
-  await pool.query(
-    "UPDATE applications SET status = 'test_taken' WHERE drive_id = ? AND student_id = ? AND status = 'applied'",
-    [driveId, studentId]
-  );
-  return { score, total, percentage };
+  // One transaction (dbms/transactions.js): the result row and the
+  // 'test_taken' status flip succeed or fail together.
+  return recordTestResult(driveId, studentId, { score, total, percentage, answers });
 }
 
 // ---------------------------------------------------------------------------

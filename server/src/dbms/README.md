@@ -4,13 +4,13 @@ Every file here implements DBMS concepts from the syllabus, with real SQL. The s
 itself (`database/schema.sql`) carries the rest: 3NF tables, keys, CHECK constraints,
 indexes, audit triggers, the `sp_generate_shortlist` procedure and the `v_drive_report` view.
 
-| File | DBMS concept | Owner | Where it's used |
+| File | DBMS concept — and the SQL it owns | Owner | Where it's used |
 |---|---|---|---|
-| `db.js` | **Connection pooling.** One shared pool (20 connections, FIFO queue) instead of per-request connections — the DB as a managed resource. | Ishika (M1) | Every route and module |
-| `migrations.js` | **Schema versioning (DDL management).** `migrate_*.sql` files upgrade a live database without wiping data; applied versions are tracked in `schema_migrations`. Fresh installs still use `npm run db:reset`; upgrades use `npm run db:migrate`. | Ishika (M1) | `npm run db:migrate` |
-| `transactions.js` | **ACID transactions.** `withTransaction(work)` wraps multi-statement writes in BEGIN … COMMIT with automatic ROLLBACK — all-or-nothing by construction. | Trisha (M3) | Question-set saves, and the pattern every critical section follows |
-| `audit.js` | **Audit-trail reads.** Triggers write every mutation to `audit_log`; this module reads it back — recent activity, per-record history (via `idx_audit_entity`), and GROUP-BY summaries. | Trisha (M3) | System Monitor activity feed; Phase-2 audit viewer |
-| `eligibility.js` | **Set-based eligibility.** The drive rules in two forms: `checkEligibility()` explains *why* per student, and `findEligibleStudents()` enforces the same rules as ONE indexed query (`JSON_CONTAINS` on the branches array) — the filter runs in the database, not in Node. | Akansha (M2) | Apply flow, wizard preview, eligible-students view |
+| `db.js` | **Connection pooling + database census.** The shared pool, plus `healthCheck()` (`SELECT 1`) and `tableCounts()` — one row-count per table in a single round-trip of sub-selects. | Ishika (M1) | Every route and module; System Monitor stats |
+| `migrations.js` | **Schema versioning (DDL management).** `migrate_*.sql` files upgrade a live database without wiping data; applied versions tracked in `schema_migrations` (`CREATE TABLE IF NOT EXISTS`, `SELECT version`, `INSERT`). Fresh installs use `npm run db:reset`; upgrades use `npm run db:migrate`. | Ishika (M1) | `npm run db:migrate` |
+| `transactions.js` | **ACID transactions.** `withTransaction(work)` (BEGIN … COMMIT, auto-ROLLBACK) plus the multi-statement operations that need it: `replaceQuestionSet()` (`DELETE` + `INSERT`s) and `recordTestResult()` (`INSERT` result + `UPDATE` application status — never one without the other). | Trisha (M3) | Question builder saves; test submissions |
+| `audit.js` | **Audit-trail reads.** Triggers write every mutation to `audit_log`; this module reads it back — recent activity, per-record history (via `idx_audit_entity`), and `GROUP BY` summaries. | Trisha (M3) | System Monitor activity feed; Phase-2 audit viewer |
+| `eligibility.js` | **Set-based eligibility.** The drive rules in two forms: `checkEligibility()` explains *why* per student, and `findEligibleStudents()` enforces the same rules as ONE indexed query (`WHERE cgpa >= … AND JSON_CONTAINS(branches…)`). | Akansha (M2) | Apply flow, wizard preview, eligible-students view |
 | `reports.js` | **Aggregate reporting queries.** JOINs, GROUP BY, conditional COUNTs and the `v_drive_report` view — the SQL behind the Control Center, master schedule, roster and placement reports. | Akshay (M4) | `GET /api/admin/*`, `GET /api/reports/placement` |
 
 **Viva one-liners:**

@@ -2,6 +2,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const pool = require('../dbms/db');
+const { tableCounts } = require('../dbms/db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { bookSeat } = require('../os/critical-section');
 const { recentActivity } = require('../dbms/audit');
@@ -31,13 +32,7 @@ router.get('/locks', async (req, res, next) => {
 // GET /monitor/stats — table counts + currently held locks
 router.get('/stats', async (req, res, next) => {
   try {
-    const [[counts]] = await pool.query(
-      `SELECT (SELECT COUNT(*) FROM students) AS students,
-              (SELECT COUNT(*) FROM drives) AS drives,
-              (SELECT COUNT(*) FROM applications) AS applications,
-              (SELECT COUNT(*) FROM bookings) AS bookings,
-              (SELECT COUNT(*) FROM resources) AS resources`
-    );
+    const counts = await tableCounts();
     // A lock is "active" when the latest event for its (lock, holder) pair
     // is an acquire/wait with no matching release yet.
     const [[active]] = await pool.query(

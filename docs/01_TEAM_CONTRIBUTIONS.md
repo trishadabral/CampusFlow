@@ -82,6 +82,9 @@ exactly 10 win.
 - **Notifications backend** — the inbox tables and APIs students rely on for schedules and results
 - **Audit-trail reads** — `server/src/dbms/audit.js`: recent activity, per-record history and
   GROUP-BY summaries over the trigger-written `audit_log` (powers the System Monitor feed)
+- **Transactional writes** — `server/src/dbms/transactions.js`: `withTransaction()` plus the
+  multi-statement operations that need it — question-set replacement and test-result recording
+  (result row + status flip, never one without the other)
 
 **OS concept:** mutexes, critical sections, lock waits, process-safe resource sharing.
 **DBMS concept:** ACID transactions, row-level locking, isolation behavior.
