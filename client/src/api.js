@@ -91,9 +91,12 @@ export const allocations = {
   create: (data) => api.post('/allocations', data),
 };
 
-// --- Scheduling lab (M2) ---
+// --- Interview scheduler (M2) ---
 export const schedule = {
   simulate: (payload) => api.post('/schedule/simulate', payload),
+  auto: (data) => api.post('/schedule/auto', data),
+  getAuto: (driveId) => api.get(`/schedule/auto/${driveId}`),
+  clearAuto: (driveId) => api.delete(`/schedule/auto/${driveId}`),
 };
 
 // --- Kernel monitor (M3) ---

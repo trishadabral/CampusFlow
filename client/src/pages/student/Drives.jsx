@@ -1,5 +1,5 @@
-// Student drives — only drives YOU are eligible for, with one-click apply.
-// Ineligible drives are hidden: no confusion, no wasted clicks.
+// Student drives — every open drive, with your eligibility checked on each one.
+// A drive you just published always shows up here; eligibility never hides it.
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
@@ -13,6 +13,7 @@ function DriveCard({ detail, index, onApplied }) {
   const { drive, eligibility, my_application, questions_count } = detail;
   const [applying, setApplying] = useState(false);
   const { toast } = useToast();
+  const eligible = eligibility?.eligible ?? false;
 
   const apply = async () => {
     setApplying(true);
@@ -38,7 +39,9 @@ function DriveCard({ detail, index, onApplied }) {
         </div>
         {my_application
           ? <Badge variant="info">Applied ✓</Badge>
-          : <Badge variant="success">Eligible ✓</Badge>}
+          : eligible
+            ? <Badge variant="success">You're eligible</Badge>
+            : <Badge variant="neutral">Not eligible</Badge>}
       </div>
       {drive.description && <p className="text-sm text-slate-500 mt-2 line-clamp-2">{drive.description}</p>}
       <div className="flex flex-wrap gap-2 mt-3">
@@ -46,14 +49,19 @@ function DriveCard({ detail, index, onApplied }) {
         <span className="cf-chip bg-slate-100 text-slate-600">{(drive.allowed_branches ?? []).join(', ')}</span>
         <span className="cf-chip bg-slate-100 text-slate-600">{questions_count ?? 0} test questions</span>
       </div>
+      {!my_application && !eligible && (eligibility?.reasons?.length > 0) && (
+        <p className="text-xs text-slate-400 mt-2">Why not: {eligibility.reasons[0]}</p>
+      )}
       <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
         <span className="text-xs text-slate-400">Apply by {formatDate(drive.application_deadline)}</span>
         {my_application ? (
           <Link to={`/student/drives/${drive.id}`} className="cf-btn-secondary !py-2">Track →</Link>
-        ) : (
+        ) : eligible ? (
           <button onClick={apply} disabled={applying} className="cf-btn-primary !py-2">
             {applying ? 'Applying…' : 'Apply in 1 click'}
           </button>
+        ) : (
+          <Link to={`/student/drives/${drive.id}`} className="cf-btn-secondary !py-2">See why →</Link>
         )}
       </div>
     </div>
@@ -68,8 +76,9 @@ export default function Drives() {
   const load = async () => {
     try {
       const { data: open } = await drivesApi.list({ status: 'open' });
+      // Every open drive shows up — eligibility is a badge, never a filter.
       const details = await Promise.all(open.map((d) => drivesApi.get(d.id).then((r) => r.data).catch(() => null)));
-      setItems(details.filter((d) => d && d.eligibility?.eligible));
+      setItems(details.filter((d) => d && d.drive));
     } catch (err) {
       toast(errMsg(err, 'Could not load drives.'), 'error');
     } finally {
@@ -89,17 +98,17 @@ export default function Drives() {
     <div className="space-y-6">
       <div className="cf-hero cf-rise">
         <div className="relative z-10">
-          <h2 className="text-2xl font-bold">Drives you're eligible for</h2>
+          <h2 className="text-2xl font-bold">Open placement drives</h2>
           <p className="text-indigo-100 text-sm mt-1">
             {items.length === 0
-              ? 'Nothing matches your profile right now — check back soon.'
-              : `${items.length} drive${items.length !== 1 ? 's' : ''} match your profile. Apply, and the system schedules everything else.`}
+              ? 'Nothing open right now — check back soon.'
+              : `${items.length} drive${items.length !== 1 ? 's' : ''} open. Your eligibility is checked on each one.`}
           </p>
         </div>
       </div>
       {items.length === 0 ? (
         <div className="cf-card">
-          <EmptyState title="No eligible drives" message="When a recruiter publishes a drive matching your CGPA, branch and backlog profile, it will appear here." />
+          <EmptyState title="No open drives" message="When a recruiter publishes a drive, it appears here right away." />
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

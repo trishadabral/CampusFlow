@@ -1,5 +1,7 @@
-// M3 — Kernel Monitor (the showpiece): live lock table, process queues,
-// transaction/audit log tail, and the one-click Concurrency Stress Test.
+// Live Monitor: what the system is doing right now —
+// seat requests as they arrive, who's waiting in line, recent activity,
+// and the one-click rush-hour test.
+// (Under the hood: lock events, process queues, the audit trail.)
 
 import React, { useEffect, useRef, useState } from 'react';
 import { monitor as monitorApi, slots as slotsApi, errMsg } from '../../api.js';
@@ -13,6 +15,11 @@ const ACTION_PILL = {
   waiting: 'warning',
   released: 'neutral',
 };
+
+// Plain-language labels for lock events.
+const ACTION_LABEL = { acquired: 'Booking', waiting: 'In queue', released: 'Done' };
+const holderName = (h) => (h === 'stress-test' ? 'Rush test' : h);
+const VERB = { INSERT: 'Created', UPDATE: 'Updated', DELETE: 'Removed' };
 
 function Panel({ title, sub, children, wide }) {
   return (
@@ -74,8 +81,16 @@ export default function KernelMonitor() {
     })();
   }, []);
 
-  // Process queues derived from the lock table:
-  // latest "acquired" holder per lock = RUNNING; "waiting" rows = WAITING.
+  // Human-readable seat name for a lock like "slot:7".
+  const seatName = (lockName) => {
+    const m = /^slot:(\d+)$/.exec(lockName || '');
+    if (!m) return lockName;
+    const s = slotList.find((x) => String(x.id) === m[1]);
+    return s ? s.title : `Slot #${m[1]}`;
+  };
+
+  // Queues derived from the activity feed:
+  // latest "Booking" per seat+student = getting a seat; "In queue" rows = waiting in line.
   const running = [];
   const waiting = [];
   const seen = new Set();
@@ -90,7 +105,7 @@ export default function KernelMonitor() {
   }
 
   const runStress = async () => {
-    if (!stressSlot) { toast('Pick a slot to stress-test first.', 'error'); return; }
+    if (!stressSlot) { toast('Pick a slot to test first.', 'error'); return; }
     setStressRunning(true);
     setStressResult(null);
     setStressProgress(0);
@@ -102,7 +117,7 @@ export default function KernelMonitor() {
       setStressProgress(100);
       setStressResult(data);
     } catch (err) {
-      toast(errMsg(err, 'The stress test failed to run.'), 'error');
+      toast(errMsg(err, 'The rush test failed to run.'), 'error');
     } finally {
       clearInterval(progressTimer.current);
       setStressRunning(false);
@@ -112,8 +127,8 @@ export default function KernelMonitor() {
   const renderProcess = (l) => (
     <div className="flex items-center justify-between px-4 py-2 text-sm border-b border-slate-50 last:border-0">
       <div className="min-w-0">
-        <div className="font-mono-tight text-[13px] text-slate-800 truncate">{l.holder}</div>
-        <div className="text-xs text-slate-400 truncate">{l.lock_name}</div>
+        <div className="font-mono-tight text-[13px] text-slate-800 truncate">{holderName(l.holder)}</div>
+        <div className="text-xs text-slate-400 truncate">{seatName(l.lock_name)}</div>
       </div>
       {l.wait_ms > 0 && <span className="text-xs text-amber-600 font-medium shrink-0">{l.wait_ms} ms</span>}
     </div>
@@ -126,16 +141,16 @@ export default function KernelMonitor() {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Lock table */}
-        <Panel title="Lock table" sub="Mutex acquire / wait / release events, newest first.">
+        {/* Live booking activity */}
+        <Panel title="Live booking activity" sub="Every seat request as it happens — newest first.">
           <div className="max-h-80 overflow-y-auto slim-scroll">
             <DataTable
-              emptyHint="No lock activity yet — book a slot and watch this table come alive."
+              emptyHint="No booking activity yet — when students book seats, each request appears here live."
               columns={[
-                { key: 'lock', label: 'Lock', render: (l) => <span className="font-mono-tight text-[13px]">{l.lock_name}</span> },
-                { key: 'holder', label: 'Holder', render: (l) => <span className="font-mono-tight text-[13px] text-slate-600">{l.holder}</span> },
-                { key: 'action', label: 'Action', render: (l) => <Badge variant={ACTION_PILL[l.action] ?? 'neutral'}>{l.action}</Badge> },
-                { key: 'wait', label: 'Wait', render: (l) => <span className="text-slate-500">{l.wait_ms ?? 0} ms</span> },
+                { key: 'lock', label: 'Seat', render: (l) => <span className="text-[13px]">{seatName(l.lock_name)}</span> },
+                { key: 'holder', label: 'Student', render: (l) => <span className="text-[13px] text-slate-600">{holderName(l.holder)}</span> },
+                { key: 'action', label: 'Status', render: (l) => <Badge variant={ACTION_PILL[l.action] ?? 'neutral'}>{ACTION_LABEL[l.action] ?? l.action}</Badge> },
+                { key: 'wait', label: 'Waited', render: (l) => <span className="text-slate-500">{l.wait_ms ?? 0} ms</span> },
                 { key: 'time', label: 'Time', render: (l) => <span className="text-slate-400 text-xs">{timeAgo(l.created_at)}</span> },
               ]}
               rows={locks}
@@ -143,35 +158,35 @@ export default function KernelMonitor() {
           </div>
         </Panel>
 
-        {/* Process queues */}
-        <Panel title="Process queues" sub="Derived live: lock holders are RUNNING, waiters are WAITING.">
+        {/* Who's booking right now */}
+        <Panel title="Who's booking right now" sub="Live snapshot — who's getting a seat, and who's waiting in line.">
           <div className="grid grid-cols-2 max-h-80 overflow-y-auto slim-scroll divide-x divide-slate-100">
             <div>
               <div className="px-4 py-2 text-xs font-semibold text-emerald-700 uppercase tracking-wide sticky top-0 bg-white">
-                Running ({running.length})
+                Getting a seat ({running.length})
               </div>
-              {running.length === 0 ? <div className="px-4 py-6 text-xs text-slate-400 text-center">Idle</div> : running.slice(0, 20).map((l) => <div key={`r${l.id}`}>{renderProcess(l)}</div>)}
+              {running.length === 0 ? <div className="px-4 py-6 text-xs text-slate-400 text-center">Nobody booking right now</div> : running.slice(0, 20).map((l) => <div key={`r${l.id}`}>{renderProcess(l)}</div>)}
             </div>
             <div>
               <div className="px-4 py-2 text-xs font-semibold text-amber-700 uppercase tracking-wide sticky top-0 bg-white">
-                Waiting ({waiting.length})
+                In line ({waiting.length})
               </div>
-              {waiting.length === 0 ? <div className="px-4 py-6 text-xs text-slate-400 text-center">Empty</div> : waiting.slice(0, 20).map((l) => <div key={`w${l.id}`}>{renderProcess(l)}</div>)}
+              {waiting.length === 0 ? <div className="px-4 py-6 text-xs text-slate-400 text-center">No queue</div> : waiting.slice(0, 20).map((l) => <div key={`w${l.id}`}>{renderProcess(l)}</div>)}
             </div>
           </div>
         </Panel>
 
-        {/* Transaction / audit log */}
-        <Panel title="Transaction log" sub="Audit trail of every write — the database's own journal, tailed live.">
+        {/* Recent activity */}
+        <Panel title="Recent activity" sub="Everything the system just did, as it happened.">
           <div className="max-h-72 overflow-y-auto slim-scroll px-5 py-3 font-mono-tight text-[12px] leading-relaxed">
             {activity.length === 0 ? (
-              <div className="text-slate-400 text-sm font-sans py-4 text-center">No transactions yet.</div>
+              <div className="text-slate-400 text-sm font-sans py-4 text-center">No activity yet.</div>
             ) : (
               activity.map((a) => (
                 <div key={a.id} className="py-1 border-b border-slate-50 last:border-0">
                   <span className="text-slate-400">{formatDate(a.created_at)}</span>{' '}
-                  <span className="text-indigo-600 font-semibold">{a.action}</span>{' '}
-                  <span className="text-slate-700">{a.entity}{a.entity_id ? `#${a.entity_id}` : ''}</span>
+                  <span className="text-indigo-600 font-semibold">{VERB[a.action] ?? a.action}</span>{' '}
+                  <span className="text-slate-700">{a.entity}{a.entity_id ? ` #${a.entity_id}` : ''}</span>
                   {a.details && <span className="text-slate-400"> — {a.details}</span>}
                 </div>
               ))
@@ -179,12 +194,12 @@ export default function KernelMonitor() {
           </div>
         </Panel>
 
-        {/* Stress test */}
-        <Panel title="Concurrency stress test" sub="Fire N booking requests at M seats at once. The mutex + transaction must let exactly the right number through.">
+        {/* Rush-hour test */}
+        <Panel title="Rush-hour test" sub="Pretend N students all tap “Book” in the same second for M seats. Exactly M should get through — never more.">
           <div className="px-5 py-4 space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">Target slot</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Slot</label>
                 <select value={stressSlot} onChange={(e) => setStressSlot(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
                   {slotList.map((s) => (
@@ -193,7 +208,7 @@ export default function KernelMonitor() {
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-600 mb-1.5">Concurrent students</label>
+                <label className="block text-xs font-medium text-slate-600 mb-1.5">Students rushing at once</label>
                 <input type="number" min="2" max="1000" value={stressCount} onChange={(e) => setStressCount(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
@@ -204,7 +219,7 @@ export default function KernelMonitor() {
                 <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div className="h-full bg-indigo-600 rounded-full transition-all duration-200" style={{ width: `${stressProgress}%` }} />
                 </div>
-                <div className="text-xs text-slate-500 mt-1.5">Firing {stressCount} concurrent booking requests…</div>
+                <div className="text-xs text-slate-500 mt-1.5">Sending {stressCount} booking requests at once…</div>
               </div>
             )}
 
@@ -213,27 +228,27 @@ export default function KernelMonitor() {
                 <div className="flex items-baseline gap-6">
                   <div>
                     <span className="text-3xl font-bold text-emerald-600">{stressResult.confirmed}</span>
-                    <span className="text-sm text-slate-500 ml-1">confirmed</span>
+                    <span className="text-sm text-slate-500 ml-1">got seats</span>
                   </div>
                   <div className="text-slate-300 text-2xl">/</div>
                   <div>
                     <span className="text-3xl font-bold text-rose-600">{stressResult.rejected}</span>
-                    <span className="text-sm text-slate-500 ml-1">rejected</span>
+                    <span className="text-sm text-slate-500 ml-1">missed out</span>
                   </div>
                 </div>
                 <p className="text-xs text-slate-500 mt-2">
-                  {stressResult.attempted} attempted in {stressResult.ms} ms — zero oversells. The critical
-                  section serialized every request; the lock table above is the proof.
+                  {stressResult.attempted} rushed in {stressResult.ms} ms — zero double-bookings.
+                  Every request waited its turn; the activity above is the proof.
                 </p>
               </div>
             )}
 
             <button onClick={runStress} disabled={stressRunning || !stressSlot}
               className="w-full bg-rose-600 hover:bg-rose-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl px-4 py-2.5 transition-colors">
-              {stressRunning ? 'Running…' : 'Run stress test'}
+              {stressRunning ? 'Running…' : 'Run rush test'}
             </button>
             {slotList.length === 0 && (
-              <p className="text-xs text-slate-400">No slots exist yet — ask a recruiter to publish one first.</p>
+              <p className="text-xs text-slate-400">No slots yet — a recruiter needs to publish one first.</p>
             )}
           </div>
         </Panel>

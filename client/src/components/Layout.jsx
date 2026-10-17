@@ -20,8 +20,8 @@ const NAV = {
   ],
   admin: [
     { to: '/admin', label: 'Control Center', end: true },
-    { to: '/admin/monitor', label: 'System Monitor' },
-    { to: '/admin/scheduling', label: 'Scheduling Lab' },
+    { to: '/admin/monitor', label: 'Live Monitor' },
+    { to: '/admin/scheduling', label: 'Interview Scheduler' },
     { to: '/admin/resources', label: 'Resources' },
     { to: '/admin/reports', label: 'Reports' },
     { to: '/admin/users', label: 'Users' },
@@ -31,7 +31,7 @@ const NAV = {
 const TITLES = {
   '/student': 'My Applications', '/student/drives': 'Find Drives', '/student/bookings': 'My Schedule',
   '/recruiter': 'Dashboard', '/recruiter/drives': 'My Drives', '/recruiter/drives/new': 'Add Drive',
-  '/admin': 'Control Center', '/admin/monitor': 'System Monitor', '/admin/scheduling': 'Scheduling Lab',
+  '/admin': 'Control Center', '/admin/monitor': 'Live Monitor', '/admin/scheduling': 'Interview Scheduler',
   '/admin/resources': 'Resources', '/admin/reports': 'Reports', '/admin/users': 'Users',
 };
 

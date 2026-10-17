@@ -57,7 +57,8 @@ discipline.
   time, auto-submit); instant auto-grading (`submitTest`)
 - **Interview scheduling engine** — shortlists by score (cutoff + top-N cap), then timetables
   interviews round-robin across panels and rooms (`server/src/os/pipeline.js`)
-- **Student journey UI** — eligible-drives browsing, 1-click apply, visual progress tracker
+- **Student journey UI** — open-drives browsing (every published drive appears; eligibility is
+  a badge, never a filter), 1-click apply, visual progress tracker
   (Applied → Test → Result → Interview), My Schedule page
 
 **OS concept:** batch-job scheduling (the pipeline drains queues as jobs).
@@ -77,12 +78,21 @@ exactly 10 win.
   lock (not app code) is the single source of truth
 - **Pipeline seat assignment** — the auto-scheduler books every test/interview seat through the
   same serialized primitive, so system-driven booking is just as safe as manual booking
-- **System Monitor UI** — live lock table, activity feed, stats; the demo surface for the viva
+- **System Monitor UI** — now the **Live Monitor**: plain-language live activity feed
+  ("who's booking right now", "recent activity", rush-hour test), no OS jargon on screen;
+  still the demo surface for the viva
 - **Stress test** — `POST /api/monitor/stress`: fires N concurrent booking attempts and proves
   `confirmed = min(attempts, seats)` with zero oversell
 - **Notifications backend** — the inbox tables and APIs students rely on for schedules and results
 - **CPU scheduling simulator** — `server/src/os/cpu-scheduler.js`: FCFS / Priority / Round-Robin
-  with Gantt output and waiting-time analysis (powers the Scheduling Lab)
+  with Gantt output and waiting-time analysis (Round-Robin kept in the simulator for
+  resource-management experiments; interview scheduling uses Priority / FCFS only)
+- **Interview Scheduler** — `POST /schedule/auto` (`server/src/routes/schedule.js`): pick a drive
+  and the system timetables its shortlisted students — priority from marks (highest CGPA
+  first) or application order, a lab reserved for the whole window via the Banker's safety
+  check, real interview slots written in one transaction; `DELETE /schedule/auto/:id`
+  regenerates cleanly. UI: drive picker, ordering rule, lab booking verdict, timetable and
+  rule comparison — no manual candidate entry, no Round-Robin
 - **Reporting queries** — `server/src/dbms/reports.js`: all aggregate queries (JOIN + GROUP BY,
   conditional counts, the `v_drive_report` view) behind the Control Center and Reports page
 
