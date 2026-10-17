@@ -18,12 +18,12 @@ const { checkAllocation } = require('../os/banker');
 
 const router = express.Router();
 
-// POST /schedule/simulate — kept for ad-hoc simulation (all three algorithms).
+// POST /schedule/simulate — ad-hoc simulation (FCFS / Priority only).
 router.post('/simulate', (req, res, next) => {
   try {
-    const { algorithm, quantum, interviews } = req.body || {};
-    if (!['fcfs', 'priority', 'rr'].includes(algorithm)) {
-      return res.status(400).json({ error: 'Algorithm must be one of: fcfs, priority, rr.' });
+    const { algorithm, interviews } = req.body || {};
+    if (!['fcfs', 'priority'].includes(algorithm)) {
+      return res.status(400).json({ error: 'Algorithm must be one of: fcfs, priority.' });
     }
     if (!Array.isArray(interviews) || !interviews.length) {
       return res.status(400).json({ error: 'Provide a non-empty interviews array.' });
@@ -35,7 +35,7 @@ router.post('/simulate', (req, res, next) => {
           .json({ error: 'Every interview needs an id and a positive burst time.' });
       }
     }
-    res.json(simulate(algorithm, interviews, quantum == null ? 4 : quantum));
+    res.json(simulate(algorithm, interviews));
   } catch (err) {
     next(err);
   }

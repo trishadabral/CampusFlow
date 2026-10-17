@@ -13,7 +13,7 @@ import EmptyState from '../../components/EmptyState.jsx';
 const TYPE_BADGE = { lab: 'info', room: 'success', interviewer: 'warning' };
 const TYPE_HINT = {
   lab: 'Test sessions are auto-batched into labs by capacity, biggest first.',
-  room: 'Interviews are assigned to rooms round-robin.',
+  room: 'Interviews are spread across rooms in rotation.',
   interviewer: 'Named interviewers for manual reference.',
 };
 

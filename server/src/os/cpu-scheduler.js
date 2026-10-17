@@ -1,8 +1,10 @@
-// CPU scheduling simulator for the Scheduling Lab.
-// simulate(algorithm, interviews, quantum) -> {order, gantt, avg_waiting_time, avg_turnaround_time}
-//   algorithm: 'fcfs' | 'priority' (non-preemptive, lower number = higher priority) | 'rr'
+// CPU scheduling simulator.
+// simulate(algorithm, interviews) -> {order, gantt, avg_waiting_time, avg_turnaround_time}
+//   algorithm: 'fcfs' | 'priority' (non-preemptive, lower number = higher priority)
 //   interviews: [{id, label, burst, priority, arrival}]
 //   Waiting = first start - arrival. Turnaround = finish - arrival. Averages rounded to 1 decimal.
+// Round-robin was deliberately removed: preemptive time-slicing makes no sense
+// for interviews (you can't pause a candidate mid-interview and resume later).
 
 function round1(n) {
   return Math.round(n * 10) / 10;
@@ -12,14 +14,13 @@ function cmpId(a, b) {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-function simulate(algorithm, interviews, quantum = 4) {
+function simulate(algorithm, interviews) {
   const procs = (interviews || []).map((p) => ({
     id: p.id,
     label: p.label != null ? String(p.label) : String(p.id),
     burst: Number(p.burst),
     priority: p.priority != null ? Number(p.priority) : 99,
     arrival: p.arrival != null ? Number(p.arrival) : 0,
-    remaining: Number(p.burst),
     firstStart: null,
     end: null,
   }));
@@ -68,43 +69,8 @@ function simulate(algorithm, interviews, quantum = 4) {
       done.add(p.id);
       time = p.end;
     }
-  } else if (algorithm === 'rr') {
-    // Round robin: each process runs for at most `quantum`, then goes to
-    // the back of the ready queue. Arrival-aware: newcomers join the queue
-    // as time passes.
-    const q = Number(quantum) > 0 ? Number(quantum) : 4;
-    const byArrival = [...procs].sort((a, b) => a.arrival - b.arrival || cmpId(a.id, b.id));
-    const queue = [];
-    const enqueued = new Set();
-    time = byArrival[0].arrival;
-    const admitArrived = () => {
-      for (const p of byArrival) {
-        if (!enqueued.has(p.id) && p.arrival <= time && p.remaining > 0) {
-          enqueued.add(p.id);
-          queue.push(p);
-        }
-      }
-    };
-    admitArrived();
-    while (queue.length) {
-      const p = queue.shift();
-      if (p.firstStart === null) {
-        p.firstStart = time;
-        order.push(p.id);
-      }
-      const slice = Math.min(q, p.remaining);
-      gantt.push({ id: p.id, label: p.label, start: time, end: time + slice });
-      time += slice;
-      p.remaining -= slice;
-      admitArrived();
-      if (p.remaining > 0) {
-        queue.push(p);
-      } else {
-        p.end = time;
-      }
-    }
   } else {
-    throw Object.assign(new Error(`Unknown algorithm "${algorithm}". Use fcfs, priority or rr.`), {
+    throw Object.assign(new Error(`Unknown algorithm "${algorithm}". Use fcfs or priority.`), {
       status: 400,
     });
   }

@@ -191,7 +191,7 @@ async function scheduleTestSessions(driveId, actorId) {
 // Grades are already in test_results (written at submit time). This step:
 //   1. marks everyone who took the test,
 //   2. shortlists score >= min_test_score, top max_shortlist by percentage,
-//   3. auto-builds the interview timetable (round-robin panels × rooms),
+//   3. auto-builds the interview timetable (rotating panels × rooms),
 //   4. notifies every candidate of their result + interview slot.
 // Drive moves testing → interviews.
 // ---------------------------------------------------------------------------

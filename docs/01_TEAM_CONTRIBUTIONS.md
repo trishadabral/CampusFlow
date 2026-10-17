@@ -56,7 +56,7 @@ discipline.
 - **Test system** — recruiter question builder; student test-taker UI (timed, one question at a
   time, auto-submit); instant auto-grading (`submitTest`)
 - **Interview scheduling engine** — shortlists by score (cutoff + top-N cap), then timetables
-  interviews round-robin across panels and rooms (`server/src/os/pipeline.js`)
+  interviews rotating across panels and rooms (`server/src/os/pipeline.js`)
 - **Student journey UI** — open-drives browsing (every published drive appears; eligibility is
   a badge, never a filter), 1-click apply, visual progress tracker
   (Applied → Test → Result → Interview), My Schedule page
@@ -84,9 +84,9 @@ exactly 10 win.
 - **Stress test** — `POST /api/monitor/stress`: fires N concurrent booking attempts and proves
   `confirmed = min(attempts, seats)` with zero oversell
 - **Notifications backend** — the inbox tables and APIs students rely on for schedules and results
-- **CPU scheduling simulator** — `server/src/os/cpu-scheduler.js`: FCFS / Priority / Round-Robin
-  with Gantt output and waiting-time analysis (Round-Robin kept in the simulator for
-  resource-management experiments; interview scheduling uses Priority / FCFS only)
+- **CPU scheduling simulator** — `server/src/os/cpu-scheduler.js`: FCFS / Priority
+  with waiting-time analysis (Round-Robin deliberately removed — preemptive time-slicing
+  makes no sense for interviews)
 - **Interview Scheduler** — `POST /schedule/auto` (`server/src/routes/schedule.js`): pick a drive
   and the system timetables its shortlisted students — priority from marks (highest CGPA
   first) or application order, a lab reserved for the whole window via the Banker's safety
@@ -111,7 +111,7 @@ exactly 10 win.
 - **Admin Control Center** — all drives with stage + progress, one-click pipeline actions,
   full schedule of every test/interview session, per-applicant roster
 - **Pipeline resource wiring** — test sessions are batched into labs by capacity; interviews are
-  assigned rooms round-robin, straight from the inventory
+  assigned rooms in rotation, straight from the inventory
 - **Reports page** — placement progress per drive and per company
 - **Lock observability** — `lock_events` table + `server/src/os/locks.js`: every acquire/wait/release
   is recorded with wait times (feeds the System Monitor's live lock table)

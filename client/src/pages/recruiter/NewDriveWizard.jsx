@@ -346,7 +346,7 @@ export default function NewDriveWizard() {
           </div>
           <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-sm text-indigo-900">
             After results, the system assigns each shortlisted student the earliest free slot across {interview.num_interviewers} panel{Number(interview.num_interviewers) !== 1 && 's'},
-            using the admin's interview rooms round-robin. Nobody books anything manually.
+            rotating through the admin's interview rooms. Nobody books anything manually.
           </div>
         </div>
       )}
