@@ -4,6 +4,7 @@ const pool = require('../dbms/db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { placementReport, driveRoster, placementStats, analytics } = require('../dbms/reports');
 const { toCSV } = require('../utils/csv');
+const { buildDriveResultPdf, driveResultFilename } = require('../utils/drive-result-pdf');
 
 const router = express.Router();
 
@@ -99,6 +100,32 @@ router.get(
         test_session: r.test_session ?? '',
         interview_slot: r.interview_slot ?? '',
       })));
+    } catch (err) {
+      next(err);
+    }
+  }
+);
+
+// GET /reports/drives/:id/report.pdf — that drive's result as a PDF file.
+// Same access rule as the roster CSV: the drive's recruiter, or an admin.
+router.get(
+  '/drives/:id/report.pdf',
+  authenticateToken,
+  requireRole('recruiter', 'admin'),
+  async (req, res, next) => {
+    try {
+      const [drives] = await pool.query('SELECT id, created_by FROM drives WHERE id = ?', [req.params.id]);
+      if (!drives.length) return res.status(404).json({ error: 'Drive not found.' });
+      if (req.user.role !== 'admin' && drives[0].created_by !== req.user.id) {
+        return res.status(403).json({ error: 'Only the recruiter who created this drive (or an admin) can download its result.' });
+      }
+      const rows = await placementReport();
+      const row = rows.find((r) => String(r.drive_id) === String(req.params.id));
+      if (!row) return res.status(404).json({ error: 'Drive not found.' });
+      const roster = await driveRoster(req.params.id);
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${driveResultFilename(row.drive_title)}"`);
+      buildDriveResultPdf(row, roster, res);
     } catch (err) {
       next(err);
     }

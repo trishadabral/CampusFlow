@@ -49,6 +49,17 @@ export default function Reports() {
   const [rosterDrive, setRosterDrive] = useState(null);
   const [roster, setRoster] = useState([]);
   const [rosterLoading, setRosterLoading] = useState(false);
+  // Interactive viewer state: search text, status filter, column sort.
+  const [rosterSearch, setRosterSearch] = useState('');
+  const [rosterStatus, setRosterStatus] = useState('all');
+  const [rosterSort, setRosterSort] = useState({ key: 'test_percentage', dir: 'desc' });
+
+  const closeRoster = () => {
+    setRosterDrive(null);
+    setRoster([]);
+    setRosterSearch('');
+    setRosterStatus('all');
+  };
 
   useEffect(() => {
     (async () => {
@@ -76,10 +87,21 @@ export default function Reports() {
       const { data } =
         kind === 'placement'
           ? await reportsApi.exportPlacementCsv()
-          : kind === 'drive'
-            ? await reportsApi.exportDriveCsv(driveId)
-            : await reportsApi.exportRosterCsv(driveId);
+          : await reportsApi.exportRosterCsv(driveId);
       downloadBlob(data, filename);
+      toast('Download started.', 'success');
+    } catch (err) {
+      toast(errMsg(err, 'Could not download the file.'), 'error');
+    }
+  };
+
+  const pdfFilename = (drive) =>
+    `${String(drive.drive_title || 'drive').replace(/[^A-Za-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'drive'}-result.pdf`;
+
+  const downloadPdf = async (drive) => {
+    try {
+      const { data } = await reportsApi.exportDrivePdf(drive.drive_id);
+      downloadBlob(data, pdfFilename(drive));
       toast('Download started.', 'success');
     } catch (err) {
       toast(errMsg(err, 'Could not download the file.'), 'error');
@@ -88,22 +110,28 @@ export default function Reports() {
 
   const viewRoster = async (row) => {
     if (rosterDrive?.drive_id === row.drive_id) {
-      setRosterDrive(null);
-      setRoster([]);
+      closeRoster();
       return;
     }
     setRosterDrive(row);
+    setRosterSearch('');
+    setRosterStatus('all');
     setRosterLoading(true);
     try {
       const { data } = await adminApi.roster(row.drive_id);
       setRoster(data ?? []);
     } catch (err) {
       toast(errMsg(err, 'Could not load the student list.'), 'error');
-      setRosterDrive(null);
+      closeRoster();
     } finally {
       setRosterLoading(false);
     }
   };
+
+  const toggleSort = (key) =>
+    setRosterSort((s) =>
+      s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
+    );
 
   if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading report…</div>;
 
@@ -115,6 +143,40 @@ export default function Reports() {
     }),
     { applied: 0, shortlisted: 0, selected: 0 }
   );
+
+  // Interactive viewer: search by name or roll no., filter by status,
+  // sort by any column. Students with no value sort last, either way.
+  const rosterStatuses = [...new Set(roster.map((r) => r.status).filter(Boolean))];
+  const visibleRoster = (() => {
+    const q = rosterSearch.trim().toLowerCase();
+    const filtered = roster.filter((r) => {
+      if (rosterStatus !== 'all' && r.status !== rosterStatus) return false;
+      if (!q) return true;
+      return (r.name ?? '').toLowerCase().includes(q) || String(r.roll_no ?? '').toLowerCase().includes(q);
+    });
+    const { key, dir } = rosterSort;
+    const val = (r) => {
+      switch (key) {
+        case 'cgpa': return r.cgpa == null ? null : Number(r.cgpa);
+        case 'test_percentage': return r.test_percentage == null ? null : Number(r.test_percentage);
+        case 'roll_no': return r.roll_no == null ? null : Number(r.roll_no);
+        case 'test_session': return r.test_session ?? null;
+        case 'interview_slot': return r.interview_slot ?? null;
+        case 'status': return r.status ?? null;
+        case 'branch': return r.branch ?? null;
+        default: return (r.name ?? '').toLowerCase();
+      }
+    };
+    return [...filtered].sort((a, b) => {
+      const av = val(a);
+      const bv = val(b);
+      if (av == null && bv == null) return 0;
+      if (av == null) return 1;
+      if (bv == null) return -1;
+      const cmp = typeof av === 'number' && typeof bv === 'number' ? av - bv : String(av).localeCompare(String(bv));
+      return dir === 'asc' ? cmp : -cmp;
+    });
+  })();
 
   return (
     <div className="space-y-6">
@@ -218,11 +280,11 @@ export default function Reports() {
                   Download list (CSV)
                 </button>
                 <button
-                  onClick={() => downloadCsv('drive', r.drive_id, `drive-${r.drive_id}-report.csv`)}
+                  onClick={() => downloadPdf(r)}
                   className="text-xs font-bold text-indigo-600 hover:text-indigo-800"
-                  title="Download this drive's placement numbers as a spreadsheet file"
+                  title="Download this drive's result as a PDF file"
                 >
-                  Download drive report (CSV)
+                  Download result (PDF)
                 </button>
               </div>
             )},
@@ -235,28 +297,116 @@ export default function Reports() {
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
           <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3 flex-wrap">
             <div>
-              <h2 className="font-semibold text-slate-900">Student list — {rosterDrive.drive_title}</h2>
-              <p className="text-xs text-slate-500 mt-0.5">Everyone who applied, with their test session, result and interview slot.</p>
+              <h2 className="font-semibold text-slate-900">Result — {rosterDrive.drive_title}</h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                {rosterDrive.company ?? ''} · Everyone who applied, with their test result and interview slot.
+              </p>
             </div>
-            <button onClick={() => { setRosterDrive(null); setRoster([]); }} className="text-xs font-semibold text-slate-500 hover:text-slate-800">Close ✕</button>
+            <div className="flex gap-2 items-center">
+              <button onClick={() => downloadPdf(rosterDrive)} className="cf-btn-primary">
+                Download result (PDF)
+              </button>
+              <button onClick={closeRoster} className="text-xs font-semibold text-slate-500 hover:text-slate-800 px-2 py-2">Close ✕</button>
+            </div>
           </div>
+
+          {/* Summary tiles */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-5 pt-4">
+            {[
+              ['Applied', rosterDrive.applied ?? 0],
+              ['Shortlisted', rosterDrive.shortlisted ?? 0],
+              ['Selected', rosterDrive.selected ?? 0],
+              ['Avg CGPA (shortlisted)', rosterDrive.avg_cgpa_shortlisted != null ? Number(rosterDrive.avg_cgpa_shortlisted).toFixed(2) : '—'],
+            ].map(([label, value]) => (
+              <div key={label} className="bg-slate-50 rounded-xl px-4 py-3">
+                <div className="text-xl font-bold text-slate-900">{value}</div>
+                <div className="text-xs text-slate-500">{label}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Search + status filter */}
+          <div className="px-5 pt-4 flex items-center gap-3 flex-wrap">
+            <input
+              value={rosterSearch}
+              onChange={(e) => setRosterSearch(e.target.value)}
+              placeholder="Search by name or roll no…"
+              className="cf-input !w-64"
+            />
+            <div className="flex gap-1.5 flex-wrap">
+              {['all', ...rosterStatuses].map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setRosterStatus(s)}
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
+                    rosterStatus === s
+                      ? 'bg-indigo-600 text-white border-indigo-600'
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
+                  }`}
+                >
+                  {s === 'all' ? 'All' : s.replace('_', ' ')}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-slate-500 ml-auto">
+              {visibleRoster.length} of {roster.length} shown
+            </span>
+          </div>
+
           {rosterLoading ? (
             <p className="text-sm text-slate-500 py-10 text-center">Loading list…</p>
+          ) : visibleRoster.length === 0 ? (
+            <div className="px-5 py-8 text-center text-sm text-slate-400">
+              {roster.length === 0 ? 'No applicants for this drive yet.' : 'Nobody matches that search.'}
+            </div>
           ) : (
-            <DataTable
-              emptyHint="No applicants for this drive yet."
-              columns={[
-                { key: 'student', label: 'Student', render: (r) => <span className="font-medium text-slate-900">{r.name}</span> },
-                { key: 'roll', label: 'Roll no', render: (r) => r.roll_no ?? '—' },
-                { key: 'branch', label: 'Branch', render: (r) => r.branch ?? '—' },
-                { key: 'cgpa', label: 'CGPA', render: (r) => r.cgpa ?? '—' },
-                { key: 'status', label: 'Status', render: (r) => (r.status ?? '—').replace('_', ' ') },
-                { key: 'score', label: 'Test %', render: (r) => r.test_percentage != null ? `${Number(r.test_percentage).toFixed(1)}%` : '—' },
-                { key: 'test', label: 'Test session', render: (r) => r.test_session ? `${r.test_session} · ${formatDate(r.test_at)}${r.test_venue ? ` · ${r.test_venue}` : ''}` : '—' },
-                { key: 'interview', label: 'Interview', render: (r) => r.interview_slot ? `${r.interview_slot} · ${formatDate(r.interview_at)}${r.interview_venue ? ` · ${r.interview_venue}` : ''}` : '—' },
-              ]}
-              rows={roster}
-            />
+            <div className="overflow-x-auto slim-scroll mt-2">
+              <table className="w-full text-sm">
+                <thead className="sticky top-0 bg-white">
+                  <tr className="border-b border-slate-100 text-left">
+                    {[
+                      ['name', 'Student'],
+                      ['roll_no', 'Roll no'],
+                      ['branch', 'Branch'],
+                      ['cgpa', 'CGPA'],
+                      ['status', 'Status'],
+                      ['test_percentage', 'Test %'],
+                      ['test_session', 'Test session'],
+                      ['interview_slot', 'Interview'],
+                    ].map(([key, label]) => (
+                      <th key={key} className="px-5 py-3 text-xs text-slate-500 uppercase tracking-wide whitespace-nowrap">
+                        <button
+                          type="button"
+                          onClick={() => toggleSort(key)}
+                          className="flex items-center gap-1 font-semibold uppercase hover:text-indigo-700"
+                          title="Sort by this column"
+                        >
+                          {label}
+                          <span className={rosterSort.key === key ? 'text-indigo-600' : 'text-slate-300'}>
+                            {rosterSort.key === key ? (rosterSort.dir === 'asc' ? '▲' : '▼') : '↕'}
+                          </span>
+                        </button>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {visibleRoster.map((r, i) => (
+                    <tr key={r.email ?? i} className="hover:bg-slate-50/70 transition-colors">
+                      <td className="px-5 py-3.5 align-middle"><span className="font-medium text-slate-900">{r.name}</span></td>
+                      <td className="px-5 py-3.5 align-middle">{r.roll_no ?? '—'}</td>
+                      <td className="px-5 py-3.5 align-middle">{r.branch ?? '—'}</td>
+                      <td className="px-5 py-3.5 align-middle">{r.cgpa ?? '—'}</td>
+                      <td className="px-5 py-3.5 align-middle">{(r.status ?? '—').replace('_', ' ')}</td>
+                      <td className="px-5 py-3.5 align-middle">{r.test_percentage != null ? `${Number(r.test_percentage).toFixed(1)}%` : '—'}</td>
+                      <td className="px-5 py-3.5 align-middle">{r.test_session ? `${r.test_session} · ${formatDate(r.test_at)}${r.test_venue ? ` · ${r.test_venue}` : ''}` : '—'}</td>
+                      <td className="px-5 py-3.5 align-middle">{r.interview_slot ? `${r.interview_slot} · ${formatDate(r.interview_at)}${r.interview_venue ? ` · ${r.interview_venue}` : ''}` : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}

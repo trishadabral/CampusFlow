@@ -149,8 +149,8 @@ export const reports = {
   driveAnalytics: (driveId) => api.get(`/reports/drives/${driveId}/analytics`),
   // CSV downloads (Phase 2, M4) — blob responses, saved by the page.
   exportPlacementCsv: () => api.get('/reports/export.csv', { responseType: 'blob' }),
-  exportDriveCsv: (driveId) => api.get(`/reports/drives/${driveId}/export.csv`, { responseType: 'blob' }),
   exportRosterCsv: (driveId) => api.get(`/reports/drives/${driveId}/roster.csv`, { responseType: 'blob' }),
+  exportDrivePdf: (driveId) => api.get(`/reports/drives/${driveId}/report.pdf`, { responseType: 'blob' }),
   placementStats: () => api.get('/reports/placement-stats'),
 };
 
