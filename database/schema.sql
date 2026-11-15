@@ -63,6 +63,7 @@ CREATE TABLE drives (
   test_date            DATE NULL,
   interview_date       DATE NULL,
   test_duration_min    INT NOT NULL DEFAULT 60,
+  test_mode            ENUM('aptitude', 'coding', 'both') NOT NULL DEFAULT 'aptitude',  -- what the test includes
   interview_duration_min INT NOT NULL DEFAULT 20,
   num_interviewers     INT NOT NULL DEFAULT 2,
   min_test_score       DECIMAL(5,2) NOT NULL DEFAULT 50.00,  -- % needed to qualify
@@ -204,15 +205,21 @@ CREATE TABLE manual_events (
 );
 
 -- ------------------------------------------------------- test_questions --
--- Recruiter-uploaded MCQs for a drive's aptitude test.
+-- Recruiter-built test questions: aptitude MCQs and coding questions share
+-- this table. Aptitude rows carry options/correct_index; coding rows store
+-- NULL there and carry language, starter code and the expected output.
 CREATE TABLE test_questions (
-  id            INT AUTO_INCREMENT PRIMARY KEY,
-  drive_id      INT NOT NULL,
-  question_text TEXT NOT NULL,
-  options       JSON NOT NULL,                 -- ["opt A","opt B","opt C","opt D"]
-  correct_index TINYINT NOT NULL,              -- 0..3
-  marks         INT NOT NULL DEFAULT 1,
-  created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  drive_id        INT NOT NULL,
+  question_text   TEXT NOT NULL,
+  type            ENUM('aptitude', 'coding') NOT NULL DEFAULT 'aptitude',
+  options         JSON NULL,                   -- aptitude: ["opt A","opt B","opt C","opt D"]
+  correct_index   TINYINT NULL,                -- aptitude: 0..3
+  language        VARCHAR(20) NULL,            -- coding: 'javascript' | 'python'
+  starter_code    TEXT NULL,                   -- coding: code students start from
+  expected_output TEXT NULL,                   -- coding: exact expected stdout
+  marks           INT NOT NULL DEFAULT 1,
+  created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (drive_id) REFERENCES drives(id) ON DELETE CASCADE,
   INDEX idx_tq_drive (drive_id)
 );
@@ -226,7 +233,8 @@ CREATE TABLE test_results (
   score       DECIMAL(6,2) NOT NULL,
   total       DECIMAL(6,2) NOT NULL,
   percentage  DECIMAL(5,2) NOT NULL,
-  answers     JSON NULL,                       -- {question_id: chosen_index}
+  answers     JSON NULL,                       -- {question_id: chosen_index | code}
+  tab_switches INT NOT NULL DEFAULT 0,         -- times the student left the test tab
   submitted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_test_result (drive_id, student_id),
   FOREIGN KEY (drive_id)   REFERENCES drives(id)   ON DELETE CASCADE,

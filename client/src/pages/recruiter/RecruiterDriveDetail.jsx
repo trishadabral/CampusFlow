@@ -369,7 +369,12 @@ export default function RecruiterDriveDetail() {
                 { key: 'roll', label: 'Roll no', render: (a) => a.student?.roll_no ?? '—' },
                 { key: 'branch', label: 'Branch', render: (a) => a.student?.branch ?? '—' },
                 { key: 'cgpa', label: 'CGPA', render: (a) => a.student?.cgpa ?? '—' },
-                { key: 'score', label: 'Test %', render: (a) => a.test_percentage != null ? <span className="font-semibold">{Number(a.test_percentage).toFixed(1)}%</span> : <span className="text-slate-300">—</span> },
+                { key: 'score', label: 'Test %', render: (a) => a.test_percentage != null ? (
+                  <span>
+                    <span className="font-semibold">{Number(a.test_percentage).toFixed(1)}%</span>
+                    {Number(a.tab_switches) > 0 && <span className="block text-xs text-amber-300">⚠ {a.tab_switches} tab switch{Number(a.tab_switches) !== 1 && 'es'}</span>}
+                  </span>
+                ) : <span className="text-slate-300">—</span> },
                 { key: 'status', label: 'Status', render: (a) => <Badge variant={STATUS_VARIANT[a.status] ?? 'neutral'}>{a.status.replace('_', ' ')}</Badge> },
                 {
                   key: 'action', label: '', render: (a) => a.status === 'shortlisted' ? (
@@ -395,7 +400,12 @@ export default function RecruiterDriveDetail() {
                 columns={[
                   { key: 'rank', label: '#', render: (a) => <span className="font-bold text-slate-400">{a.rank}</span> },
                   { key: 'student', label: 'Student', render: (a) => <span className="font-medium text-slate-100">{a.student?.name}</span> },
-                  { key: 'score', label: 'Score', render: (a) => <span className="font-bold text-[#FF5C38]">{Number(a.test_percentage).toFixed(1)}%</span> },
+                  { key: 'score', label: 'Score', render: (a) => (
+                    <span>
+                      <span className="font-bold text-[#FF5C38]">{Number(a.test_percentage).toFixed(1)}%</span>
+                      {Number(a.tab_switches) > 0 && <span className="block text-xs font-normal text-amber-300">⚠ {a.tab_switches} tab switch{Number(a.tab_switches) !== 1 && 'es'}</span>}
+                    </span>
+                  ) },
                   { key: 'cutoff', label: `Cutoff ${drive.min_test_score}%`, render: (a) => a.test_percentage >= drive.min_test_score ? <Badge variant="success">Above</Badge> : <Badge variant="danger">Below</Badge> },
                   { key: 'status', label: 'Status', render: (a) => <Badge variant={STATUS_VARIANT[a.status] ?? 'neutral'}>{a.status.replace('_', ' ')}</Badge> },
                 ]}

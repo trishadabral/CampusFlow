@@ -10,6 +10,7 @@ const { setActor, clearActor } = require('../dbms/db');
 const { bookSeat } = require('./critical-section');
 const { findEligibleStudents } = require('../dbms/eligibility');
 const { recordTestResult } = require('../dbms/transactions');
+const { gradeCoding } = require('./code-runner');
 const { notifyUser } = require('../mailer');
 const { publish } = require('../realtime');
 
@@ -425,12 +426,15 @@ async function publishResults(driveId, actorId) {
 }
 
 // ---------------------------------------------------------------------------
-// submitTest(driveId, studentId, answers) — one attempt, auto-graded.
-// answers: { questionId: chosenIndex }
+// submitTest(driveId, studentId, answers, tabSwitches) — one attempt,
+// auto-graded. answers: { questionId: chosenIndex | code } — a chosen
+// option number for aptitude questions, the student's code string for coding
+// questions. tabSwitches: how many times the student left the test tab
+// (counted client-side, stored on the result for the recruiter).
 // ---------------------------------------------------------------------------
-async function submitTest(driveId, studentId, answers) {
+async function submitTest(driveId, studentId, answers, tabSwitches) {
   const [qs] = await pool.query(
-    'SELECT id, correct_index, marks FROM test_questions WHERE drive_id = ?',
+    'SELECT id, type, language, expected_output, correct_index, marks FROM test_questions WHERE drive_id = ?',
     [driveId]
   );
   if (!qs.length) throw httpError(400, 'This drive has no test questions yet.');
@@ -449,7 +453,18 @@ async function submitTest(driveId, studentId, answers) {
   let total = 0;
   for (const q of qs) {
     total += q.marks;
-    if (Number((answers || {})[q.id]) === q.correct_index) score += q.marks;
+    if (q.type === 'coding') {
+      // Coding: run the submitted code, compare its output with the expected
+      // one. A match earns full marks; anything else (wrong output, runtime
+      // error, timeout, no runner) earns 0 for this question.
+      const code = (answers || {})[q.id];
+      if (typeof code === 'string' && code.trim()) {
+        const earned = await gradeCoding({ language: q.language, code, expectedOutput: q.expected_output });
+        if (earned) score += q.marks;
+      }
+    } else if (Number((answers || {})[q.id]) === q.correct_index) {
+      score += q.marks;
+    }
   }
   // Percentage is score/total as a 0–100 number, rounded to 2 decimals.
   // (Was *1000/100, which is 10x too small: a perfect paper scored 10%,
@@ -458,7 +473,8 @@ async function submitTest(driveId, studentId, answers) {
 
   // One transaction (dbms/transactions.js): the result row and the
   // 'test_taken' status flip succeed or fail together.
-  return recordTestResult(driveId, studentId, { score, total, percentage, answers });
+  const switches = Math.max(0, Math.floor(Number(tabSwitches) || 0));
+  return recordTestResult(driveId, studentId, { score, total, percentage, answers, tabSwitches: switches });
 }
 
 // ---------------------------------------------------------------------------

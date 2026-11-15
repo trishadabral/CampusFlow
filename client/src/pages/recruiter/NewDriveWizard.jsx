@@ -1,6 +1,6 @@
 // Recruiter drive wizard — the whole drive setup in one guided flow:
 //   1. Drive details (company, eligibility, dates)
-//   2. Test questions (the aptitude test students will take)
+//   2. Test questions (the test students will take)
 //   3. Interview setup (panels, cutoff, shortlist cap)
 //   4. Review & publish
 // The system takes it from there: it schedules test sessions, grades,
@@ -24,7 +24,11 @@ const STEPS = [
 ];
 
 function emptyQuestion() {
-  return { text: '', options: ['', '', '', ''], correct_index: null, marks: 1 };
+  return { type: 'aptitude', text: '', options: ['', '', '', ''], correct_index: null, marks: 1 };
+}
+
+function emptyCodingQuestion() {
+  return { type: 'coding', text: '', language: 'javascript', starter_code: '', expected_output: '', marks: 2 };
 }
 
 export default function NewDriveWizard() {
@@ -45,6 +49,7 @@ export default function NewDriveWizard() {
     test_date: '', interview_date: '', package_lpa: '',
   });
   const [questions, setQuestions] = useState([emptyQuestion()]);
+  const [testMode, setTestMode] = useState('aptitude');
   const [interview, setInterview] = useState({
     num_interviewers: 2, min_test_score: 50, max_shortlist: 20,
     test_duration_min: 60, interview_duration_min: 20,
@@ -104,6 +109,19 @@ export default function NewDriveWizard() {
     return { ...q, options };
   }));
 
+  // Switching what the test includes drops the questions of the kind that no
+  // longer belongs, and makes sure at least one question of each included
+  // kind is waiting — the list on screen always matches the choice above.
+  const changeTestMode = (mode) => {
+    setTestMode(mode);
+    setQuestions((qs) => {
+      const keep = qs.filter((q) => mode === 'both' || (q.type || 'aptitude') === mode);
+      if (mode !== 'coding' && !keep.some((q) => (q.type || 'aptitude') === 'aptitude')) keep.push(emptyQuestion());
+      if (mode !== 'aptitude' && !keep.some((q) => q.type === 'coding')) keep.push(emptyCodingQuestion());
+      return keep;
+    });
+  };
+
   const validateStep = () => {
     if (step === 0) {
       if (!form.company_id) return 'Pick a company.';
@@ -114,12 +132,20 @@ export default function NewDriveWizard() {
       return null;
     }
     if (step === 1) {
-      if (!questions.length) return 'Add at least one question.';
-      for (let i = 0; i < questions.length; i++) {
-        const q = questions[i];
-        if (!q.text.trim()) return `Question ${i + 1}: write the question text.`;
-        if (q.options.some((o) => !o.trim())) return `Question ${i + 1}: fill in all four options.`;
-        if (q.correct_index == null) return `Question ${i + 1}: mark the correct option.`;
+      const apt = questions.filter((q) => (q.type || 'aptitude') === 'aptitude');
+      const code = questions.filter((q) => q.type === 'coding');
+      if (testMode !== 'coding' && !apt.length) return 'Add at least one aptitude question.';
+      if (testMode !== 'aptitude' && !code.length) return 'Add at least one coding question.';
+      for (let i = 0; i < apt.length; i++) {
+        const q = apt[i];
+        if (!q.text.trim()) return `Aptitude question ${i + 1}: write the question.`;
+        if (q.options.some((o) => !o.trim())) return `Aptitude question ${i + 1}: fill in all four options.`;
+        if (q.correct_index == null) return `Aptitude question ${i + 1}: mark the correct option.`;
+      }
+      for (let i = 0; i < code.length; i++) {
+        const q = code[i];
+        if (!q.text.trim()) return `Coding question ${i + 1}: write the problem.`;
+        if (!q.expected_output || !q.expected_output.trim()) return `Coding question ${i + 1}: write the expected output.`;
       }
       return null;
     }
@@ -170,12 +196,22 @@ export default function NewDriveWizard() {
         package_lpa: form.package_lpa === '' ? null : Number(form.package_lpa),
       });
       const driveId = data.drive.id;
-      await drivesApi.saveQuestions(driveId, questions.map((q) => ({
-        text: q.text.trim(),
-        options: q.options.map((o) => o.trim()),
-        correct_index: q.correct_index,
-        marks: Number(q.marks) || 1,
-      })));
+      await drivesApi.saveQuestions(driveId, questions.map((q) => {
+        if (q.type === 'coding') {
+          return {
+            type: 'coding', text: q.text.trim(), language: q.language,
+            starter_code: q.starter_code.trim() || null,
+            expected_output: q.expected_output.trim(),
+            marks: Number(q.marks) || 1,
+          };
+        }
+        return {
+          type: 'aptitude', text: q.text.trim(),
+          options: q.options.map((o) => o.trim()),
+          correct_index: q.correct_index,
+          marks: Number(q.marks) || 1,
+        };
+      }), testMode);
       toast('Drive published. The system will handle scheduling from here.', 'success');
       navigate(`/recruiter/drives/${driveId}`);
     } catch (err) {
@@ -189,6 +225,11 @@ export default function NewDriveWizard() {
     ...s,
     state: i < step ? 'done' : i === step ? 'current' : 'todo',
   }));
+
+  // Questions split by kind, keeping each question's index in the full list
+  // (setQ/setOpt work on that index) — each section only shows its own.
+  const aptList = questions.map((q, i) => ({ q, i })).filter(({ q }) => (q.type || 'aptitude') === 'aptitude');
+  const codeList = questions.map((q, i) => ({ q, i })).filter(({ q }) => q.type === 'coding');
 
   return (
     <div className="max-w-3xl mx-auto space-y-6">
@@ -298,37 +339,109 @@ export default function NewDriveWizard() {
           <div className="flex items-center justify-between">
             <div>
               <h2 className="cf-section-title">Test questions</h2>
-              <p className="cf-section-sub">Build the aptitude test. Students get one timed attempt; grading is automatic.</p>
+              <p className="cf-section-sub">Build the test. Students get one timed attempt; grading is automatic.</p>
             </div>
             <Badge variant="info">{questions.length} question{questions.length !== 1 && 's'}</Badge>
           </div>
-          {questions.map((q, i) => (
-            <div key={i} className="border border-white/10 rounded-2xl p-5 bg-white/5 space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-slate-300">Question {i + 1}</span>
-                <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-400 font-medium">Marks</label>
-                  <input type="number" min="1" value={q.marks} onChange={(e) => setQ(i, { marks: e.target.value })} className="cf-input !w-20 !py-1.5" />
-                  {questions.length > 1 && (
-                    <button type="button" onClick={() => setQuestions((qs) => qs.filter((_, j) => j !== i))} className="text-xs font-semibold text-rose-400 hover:text-rose-300 px-2 py-1">Remove</button>
-                  )}
-                </div>
-              </div>
-              <input value={q.text} onChange={(e) => setQ(i, { text: e.target.value })} placeholder="Write the question…" className="cf-input" />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-                {q.options.map((opt, oi) => (
-                  <label key={oi} className={`flex items-center gap-2.5 rounded-xl border px-3 py-2 cursor-pointer transition-all ${q.correct_index === oi ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-white/10 bg-[#12172A] hover:border-[#FF5C38]/40'}`}>
-                    <input type="radio" name={`q-${i}`} checked={q.correct_index === oi} onChange={() => setQ(i, { correct_index: oi })} className="accent-emerald-600 w-4 h-4" />
-                    <input value={opt} onChange={(e) => setOpt(i, oi, e.target.value)} placeholder={`Option ${oi + 1}`} className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-slate-400" />
-                  </label>
-                ))}
-              </div>
-              <p className="cf-hint">Click the radio to mark the correct answer.</p>
+          <div>
+            <label className="cf-label">What should the test include?</label>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+              {[
+                { key: 'aptitude', title: 'Aptitude only', sub: 'Multiple-choice questions' },
+                { key: 'coding', title: 'Coding only', sub: 'Write-and-run code questions' },
+                { key: 'both', title: 'Both aptitude and coding', sub: 'A mix of both kinds' },
+              ].map((opt) => (
+                <button
+                  key={opt.key} type="button" onClick={() => changeTestMode(opt.key)}
+                  className={`text-left rounded-xl border-2 px-4 py-3 transition-all ${testMode === opt.key ? 'border-[#FF5C38] bg-[#FF5C38]/10 shadow-md shadow-black/30' : 'border-white/10 bg-[#12172A] hover:border-[#FF5C38]/40'}`}
+                >
+                  <div className={`text-sm font-bold ${testMode === opt.key ? 'text-[#FF8A6B]' : 'text-slate-300'}`}>{opt.title}</div>
+                  <div className="text-xs text-slate-400 mt-0.5">{opt.sub}</div>
+                </button>
+              ))}
             </div>
-          ))}
-          <button type="button" onClick={() => setQuestions((qs) => [...qs, emptyQuestion()])} className="cf-btn-secondary w-full border-dashed">
-            + Add another question
-          </button>
+          </div>
+
+          {/* Aptitude questions */}
+          {testMode !== 'coding' && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-slate-300">Aptitude questions</h3>
+              {aptList.map(({ q, i }, n) => (
+                <div key={i} className="border border-white/10 rounded-2xl p-5 bg-white/5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-300">Aptitude question {n + 1}</span>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-slate-400 font-medium">Marks</label>
+                      <input type="number" min="1" value={q.marks} onChange={(e) => setQ(i, { marks: e.target.value })} className="cf-input !w-20 !py-1.5" />
+                      {aptList.length > 1 && (
+                        <button type="button" onClick={() => setQuestions((qs) => qs.filter((_, j) => j !== i))} className="text-xs font-semibold text-rose-400 hover:text-rose-300 px-2 py-1">Remove</button>
+                      )}
+                    </div>
+                  </div>
+                  <input value={q.text} onChange={(e) => setQ(i, { text: e.target.value })} placeholder="Write the question…" className="cf-input" />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {q.options.map((opt, oi) => (
+                      <label key={oi} className={`flex items-center gap-2.5 rounded-xl border px-3 py-2 cursor-pointer transition-all ${q.correct_index === oi ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-white/10 bg-[#12172A] hover:border-[#FF5C38]/40'}`}>
+                        <input type="radio" name={`q-${i}`} checked={q.correct_index === oi} onChange={() => setQ(i, { correct_index: oi })} className="accent-emerald-600 w-4 h-4" />
+                        <input value={opt} onChange={(e) => setOpt(i, oi, e.target.value)} placeholder={`Option ${oi + 1}`} className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-slate-400" />
+                      </label>
+                    ))}
+                  </div>
+                  <p className="cf-hint">Click the radio to mark the correct answer.</p>
+                </div>
+              ))}
+              <button type="button" onClick={() => setQuestions((qs) => [...qs, emptyQuestion()])} className="cf-btn-secondary w-full border-dashed">
+                + Add aptitude question
+              </button>
+            </div>
+          )}
+
+          {/* Coding questions */}
+          {testMode !== 'aptitude' && (
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-slate-300">Coding questions</h3>
+              {codeList.map(({ q, i }, n) => (
+                <div key={i} className="border border-white/10 rounded-2xl p-5 bg-white/5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-slate-300">Coding question {n + 1}</span>
+                    <div className="flex items-center gap-2">
+                      <label className="text-xs text-slate-400 font-medium">Marks</label>
+                      <input type="number" min="1" value={q.marks} onChange={(e) => setQ(i, { marks: e.target.value })} className="cf-input !w-20 !py-1.5" />
+                      {codeList.length > 1 && (
+                        <button type="button" onClick={() => setQuestions((qs) => qs.filter((_, j) => j !== i))} className="text-xs font-semibold text-rose-400 hover:text-rose-300 px-2 py-1">Remove</button>
+                      )}
+                    </div>
+                  </div>
+                  <div>
+                    <label className="cf-label">Problem</label>
+                    <textarea value={q.text} onChange={(e) => setQ(i, { text: e.target.value })} rows={3} placeholder="Describe the problem… e.g. Write a program that prints the sum of 3 and 4." className="cf-input" />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="cf-label">Language</label>
+                      <select value={q.language} onChange={(e) => setQ(i, { language: e.target.value })} className="cf-input">
+                        <option value="javascript">JavaScript</option>
+                        <option value="python">Python</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="cf-label">Expected output</label>
+                      <textarea value={q.expected_output} onChange={(e) => setQ(i, { expected_output: e.target.value })} rows={1} placeholder="e.g. 7" className="cf-input font-mono" />
+                      <p className="cf-hint">Exactly what the program should print.</p>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="cf-label">Starter code <span className="font-normal text-slate-400">(optional)</span></label>
+                    <textarea value={q.starter_code} onChange={(e) => setQ(i, { starter_code: e.target.value })} rows={3} placeholder="// Code students start with" className="cf-input font-mono !text-[13px]" />
+                    <p className="cf-hint">Students see this in the answer box and build on it.</p>
+                  </div>
+                </div>
+              ))}
+              <button type="button" onClick={() => setQuestions((qs) => [...qs, emptyCodingQuestion()])} className="cf-btn-secondary w-full border-dashed">
+                + Add coding question
+              </button>
+            </div>
+          )}
         </div>
       )}
 
@@ -396,7 +509,7 @@ export default function NewDriveWizard() {
             </div>
             <div className="bg-[#0B0E1A] rounded-xl p-4">
               <div className="text-xs uppercase tracking-wide text-slate-400 font-semibold mb-1">Test</div>
-              <div className="text-slate-300">{questions.length} questions · {interview.test_duration_min} min · {form.test_date || 'no date'}</div>
+              <div className="text-slate-300">{questions.length} questions ({testMode === 'both' ? 'aptitude + coding' : testMode}) · {interview.test_duration_min} min · {form.test_date || 'no date'}</div>
             </div>
             <div className="bg-[#0B0E1A] rounded-xl p-4">
               <div className="text-xs uppercase tracking-wide text-slate-400 font-semibold mb-1">Interviews</div>

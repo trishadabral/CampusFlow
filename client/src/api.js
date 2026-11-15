@@ -58,11 +58,12 @@ export const drives = {
   // Offer letters (Phase 2, M2)
   offers: (id) => api.get(`/drives/${id}/offers`),
   generateOffers: (id, data) => api.post(`/drives/${id}/offers/generate`, data),
-  // Test questions (recruiter)
-  saveQuestions: (id, questions) => api.post(`/drives/${id}/questions`, { questions }),
+  // Test questions (recruiter) — the question list plus what the test
+  // includes: 'aptitude', 'coding' or 'both'.
+  saveQuestions: (id, questions, testMode) => api.post(`/drives/${id}/questions`, { questions, test_mode: testMode }),
   // Test taking (student)
   getTest: (id) => api.get(`/drives/${id}/test`),
-  submitTest: (id, answers) => api.post(`/drives/${id}/test/submit`, { answers }),
+  submitTest: (id, answers, tabSwitches) => api.post(`/drives/${id}/test/submit`, { answers, tab_switches: tabSwitches ?? 0 }),
 };
 
 // --- Student journey ---

@@ -169,19 +169,19 @@ async function seed(conn) {
     companyId, title, minCgpa, branches, maxBacklogs, gradYear,
     deadlineInDays, testInDays, interviewInDays,
     minTestScore = 50, maxShortlist = 20, packageLpa = null,
-    status = 'open', createdBy,
+    testMode = 'aptitude', status = 'open', createdBy,
   }) {
     const [res] = await conn.query(
       `INSERT INTO drives (company_id, title, min_cgpa, allowed_branches, max_backlogs,
                            graduation_year, application_deadline, test_date, interview_date,
-                           min_test_score, max_shortlist, package_lpa, status, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                           min_test_score, max_shortlist, package_lpa, test_mode, status, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         companyId, title, minCgpa, JSON.stringify(branches), maxBacklogs, gradYear,
         daysFromNow(deadlineInDays),
         testInDays === null ? null : dateFromNow(testInDays),
         interviewInDays === null ? null : dateFromNow(interviewInDays),
-        minTestScore, maxShortlist, packageLpa, status, createdBy,
+        minTestScore, maxShortlist, packageLpa, testMode, status, createdBy,
       ]
     );
     return res.insertId;
@@ -191,7 +191,7 @@ async function seed(conn) {
     companyId: c1.insertId, title: 'SDE Role 2027', minCgpa: 8.0,
     branches: ['CSE', 'IT'], maxBacklogs: 0, gradYear: 2027,
     deadlineInDays: 10, testInDays: 14, interviewInDays: 21,
-    minTestScore: 50, maxShortlist: 20, status: 'open', createdBy: priyaId,
+    minTestScore: 50, maxShortlist: 20, testMode: 'both', status: 'open', createdBy: priyaId,
   });
   const drive2 = await addDrive({
     companyId: c2.insertId, title: 'Analyst 2027', minCgpa: 7.0,
@@ -399,6 +399,18 @@ async function seed(conn) {
   for (const [driveX, qs] of [[drive1, sampleQuestions], [drive2, sampleQuestions.slice(0, 3)]]) {
     await insertQuestions(driveX, qs);
   }
+
+  // One coding question on the SDE drive (Wave 6): its test_mode is 'both',
+  // so students get the aptitude questions above plus this one. Inserted
+  // separately from insertQuestions() — that helper only handles aptitude
+  // questions (it tracks correct answers for seeded results, and drive1,
+  // an open drive, has no seeded results).
+  await conn.query(
+    `INSERT INTO test_questions (drive_id, question_text, type, language, starter_code, expected_output, marks)
+     VALUES (?, ?, 'coding', 'javascript', ?, '7', 2)`,
+    [drive1, 'Write a program that prints the sum of 3 and 4.', '// Write your code below\n']
+  );
+  driveTotals[drive1] += 2;
 
   // Fresh questions for every new drive (8 each, 10 for the testing drive).
   await insertQuestions(drive4, [

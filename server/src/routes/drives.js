@@ -276,7 +276,7 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
       );
       body.my_application = aRows[0] || null;
       const [rRows] = await pool.query(
-        'SELECT score, total, percentage, submitted_at FROM test_results WHERE drive_id = ? AND student_id = ?',
+        'SELECT score, total, percentage, tab_switches, submitted_at FROM test_results WHERE drive_id = ? AND student_id = ?',
         [drive.id, req.user.id]
       );
       body.my_result = rRows[0] || null;
@@ -374,7 +374,8 @@ router.get(
         `SELECT a.id, a.status, a.applied_at,
                 u.id AS user_id, u.name, u.email,
                 s.roll_no, s.branch, s.cgpa, s.backlogs, s.graduation_year,
-                tr.percentage AS test_percentage
+                tr.percentage AS test_percentage,
+                tr.tab_switches
          FROM applications a
          JOIN students s ON s.user_id = a.student_id
          JOIN users u ON u.id = s.user_id
@@ -394,6 +395,7 @@ router.get(
           return {
             id: r.id, student, status: r.status, eligible, fail_reasons: reasons,
             test_percentage: r.test_percentage != null ? Number(r.test_percentage) : null,
+            tab_switches: r.tab_switches != null ? Number(r.tab_switches) : null,
           };
         })
       );
@@ -908,15 +910,49 @@ router.get(
 
 // --- Test questions -------------------------------------------------------
 
+const CODING_LANGUAGES = ['javascript', 'python'];
+const TEST_MODES = ['aptitude', 'coding', 'both'];
+
+// Per-question checks. Aptitude: 4 options + the correct pick. Coding: a
+// language + the expected output the submitted code must print.
 function validateQuestions(list) {
   if (!Array.isArray(list) || !list.length) return 'Provide at least one question.';
   for (let i = 0; i < list.length; i++) {
     const q = list[i] || {};
+    const type = q.type === 'coding' ? 'coding' : 'aptitude';
     if (!q.text || !String(q.text).trim()) return `Question ${i + 1}: text is required.`;
-    if (!Array.isArray(q.options) || q.options.length < 2) return `Question ${i + 1}: at least 2 options are required.`;
-    if (q.correct_index == null || q.correct_index < 0 || q.correct_index >= q.options.length) {
-      return `Question ${i + 1}: pick the correct option.`;
+    if (!Number.isFinite(Number(q.marks)) || Number(q.marks) <= 0) {
+      return `Question ${i + 1}: marks must be at least 1.`;
     }
+    if (type === 'aptitude') {
+      if (!Array.isArray(q.options) || q.options.length !== 4 || q.options.some((o) => !String(o ?? '').trim())) {
+        return `Question ${i + 1}: fill in all four options.`;
+      }
+      if (q.correct_index == null || q.correct_index < 0 || q.correct_index > 3) {
+        return `Question ${i + 1}: pick the correct option.`;
+      }
+    } else {
+      if (!CODING_LANGUAGES.includes(q.language)) return `Question ${i + 1}: pick a language.`;
+      if (!q.expected_output || !String(q.expected_output).trim()) {
+        return `Question ${i + 1}: write the expected output.`;
+      }
+    }
+  }
+  return null;
+}
+
+// The drive's test_mode must match the question set it is saved with:
+// aptitude needs at least one aptitude question, coding at least one coding
+// question, both needs at least one of each.
+function validateTestMode(testMode, list) {
+  const mode = testMode || 'aptitude';
+  if (!TEST_MODES.includes(mode)) return 'Pick what the test should include.';
+  const hasAptitude = (list || []).some((q) => (q || {}).type !== 'coding');
+  const hasCoding = (list || []).some((q) => (q || {}).type === 'coding');
+  if (mode === 'aptitude' && !hasAptitude) return 'Aptitude only needs at least one aptitude question.';
+  if (mode === 'coding' && !hasCoding) return 'Coding only needs at least one coding question.';
+  if (mode === 'both' && (!hasAptitude || !hasCoding)) {
+    return 'Both needs at least one aptitude question and one coding question.';
   }
   return null;
 }
@@ -933,12 +969,13 @@ router.post(
       if (!['open', 'draft'].includes(drive.status)) {
         return res.status(400).json({ error: 'Questions can only be edited before test sessions are scheduled.' });
       }
-      const problem = validateQuestions(req.body?.questions);
+      const testMode = req.body?.test_mode || 'aptitude';
+      const problem = validateQuestions(req.body?.questions) || validateTestMode(testMode, req.body?.questions);
       if (problem) return res.status(400).json({ error: problem });
 
       // One ACID transaction (dbms/transactions.js): the old set is replaced
       // atomically — a failed insert can never leave the drive with half a test.
-      const saved = await replaceQuestionSet(drive.id, req.body.questions);
+      const saved = await replaceQuestionSet(drive.id, req.body.questions, testMode);
       res.json({ saved });
     } catch (err) {
       next(err);
@@ -954,12 +991,16 @@ router.get(
   async (req, res, next) => {
     try {
       const [rows] = await pool.query(
-        'SELECT id, question_text, options, correct_index, marks FROM test_questions WHERE drive_id = ? ORDER BY id',
+        `SELECT id, question_text, type, language, starter_code, expected_output,
+                options, correct_index, marks
+         FROM test_questions WHERE drive_id = ? ORDER BY id`,
         [req.params.id]
       );
       res.json(rows.map((r) => ({
-        id: r.id, text: r.question_text,
-        options: typeof r.options === 'string' ? JSON.parse(r.options) : r.options,
+        id: r.id, text: r.question_text, type: r.type || 'aptitude',
+        language: r.language || null, starter_code: r.starter_code || null,
+        expected_output: r.expected_output || null,
+        options: r.options ? (typeof r.options === 'string' ? JSON.parse(r.options) : r.options) : null,
         correct_index: r.correct_index, marks: r.marks,
       })));
     } catch (err) {
@@ -985,12 +1026,16 @@ router.get(
       );
       if (!aRows.length) return res.status(403).json({ error: 'You have not applied for this drive.' });
 
+      // Student paper: coding questions carry their language + starter code,
+      // aptitude questions their options. correct_index and expected_output
+      // are NEVER sent to students — they live server-side for grading only.
       const [qRows] = await pool.query(
-        'SELECT id, question_text, options, marks FROM test_questions WHERE drive_id = ? ORDER BY id',
+        `SELECT id, question_text, type, language, starter_code, options, marks
+         FROM test_questions WHERE drive_id = ? ORDER BY id`,
         [drive.id]
       );
       const [rRows] = await pool.query(
-        'SELECT score, total, percentage, submitted_at FROM test_results WHERE drive_id = ? AND student_id = ?',
+        'SELECT score, total, percentage, tab_switches, submitted_at FROM test_results WHERE drive_id = ? AND student_id = ?',
         [drive.id, req.user.id]
       );
       const [sRows] = await pool.query(
@@ -1003,10 +1048,11 @@ router.get(
         [req.user.id, drive.id]
       );
       res.json({
-        drive: { id: drive.id, title: drive.title, test_duration_min: drive.test_duration_min },
+        drive: { id: drive.id, title: drive.title, test_duration_min: drive.test_duration_min, test_mode: drive.test_mode || 'aptitude' },
         questions: qRows.map((r) => ({
-          id: r.id, text: r.question_text,
-          options: typeof r.options === 'string' ? JSON.parse(r.options) : r.options,
+          id: r.id, text: r.question_text, type: r.type || 'aptitude',
+          language: r.language || null, starter_code: r.starter_code || null,
+          options: r.options ? (typeof r.options === 'string' ? JSON.parse(r.options) : r.options) : null,
           marks: r.marks,
         })),
         session: sRows[0] || null,
@@ -1025,7 +1071,7 @@ router.post(
   requireRole('student'),
   async (req, res, next) => {
     try {
-      const result = await submitTest(req.params.id, req.user.id, req.body?.answers);
+      const result = await submitTest(req.params.id, req.user.id, req.body?.answers, req.body?.tab_switches);
       res.json(result);
     } catch (err) {
       next(err);

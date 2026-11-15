@@ -25,6 +25,15 @@ export default function TestTaker() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState(null);
   const timerRef = useRef(null);
+  // Tab-switch detection: while the test is in progress, leaving the tab
+  // (or the window) counts as a switch. 3 switches auto-submit the test.
+  const TAB_SWITCH_LIMIT = 3;
+  const [tabSwitches, setTabSwitches] = useState(0);
+  const tabSwitchesRef = useRef(0);
+  const answersRef = useRef({});
+  const submitRef = useRef(null);
+  const inTestRef = useRef(false);
+  const lastSwitchRef = useRef(0);
 
   useEffect(() => {
     drivesApi.getTest(driveId)
@@ -49,7 +58,10 @@ export default function TestTaker() {
     setSubmitting(true);
     clearInterval(timerRef.current);
     try {
-      const { data } = await drivesApi.submitTest(driveId, finalAnswers ?? answers);
+      // Answers and the tab-switch count come from refs: the timer and the
+      // tab-switch listener call the submit captured at an earlier render,
+      // so reading state directly here would send stale (even empty) answers.
+      const { data } = await drivesApi.submitTest(driveId, finalAnswers ?? answersRef.current, tabSwitchesRef.current);
       setResult(data);
       toast('Test submitted and graded.', 'success');
     } catch (err) {
@@ -57,6 +69,13 @@ export default function TestTaker() {
       setSubmitting(false);
     }
   };
+
+  // Keep the refs current after every render — the timer callback and the
+  // tab-switch listener always call through them.
+  useEffect(() => {
+    answersRef.current = answers;
+    submitRef.current = submit;
+  });
 
   const start = () => {
     setStarted(true);
@@ -73,6 +92,41 @@ export default function TestTaker() {
   };
 
   useEffect(() => () => clearInterval(timerRef.current), []);
+
+  // "Test in progress" as a ref, so the switch listener below always sees
+  // the current state without re-registering.
+  useEffect(() => {
+    inTestRef.current = started && !result;
+  }, [started, result]);
+
+  // Tab-switch detection — only while a test is in progress (not before
+  // start, not after submit). visibilitychange catches switching tabs and
+  // minimising; blur catches switching to another window. One real switch
+  // can fire both within milliseconds, so at most one counts per second.
+  useEffect(() => {
+    if (!started || result) return undefined;
+    const onSwitch = () => {
+      if (!inTestRef.current) return;
+      const now = Date.now();
+      if (now - lastSwitchRef.current < 1000) return;
+      lastSwitchRef.current = now;
+      tabSwitchesRef.current += 1;
+      const count = tabSwitchesRef.current;
+      setTabSwitches(count);
+      if (count >= TAB_SWITCH_LIMIT) {
+        toast('Too many tab switches — submitting your test now.', 'error');
+        submitRef.current?.();
+      }
+    };
+    const onVisibility = () => { if (document.hidden) onSwitch(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    window.addEventListener('blur', onSwitch);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      window.removeEventListener('blur', onSwitch);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [started, result]);
 
   if (loading) return <div className="text-sm text-slate-400 py-10 text-center">Loading your test…</div>;
   if (!paper) return null;
@@ -95,6 +149,11 @@ export default function TestTaker() {
             {Number(result.score)}/{Number(result.total)} marks
             {result.submitted_at && ` · submitted ${formatDate(result.submitted_at)}`}
           </p>
+          {Number(result.tab_switches) > 0 && (
+            <p className="text-sm text-amber-300 mt-2">
+              ⚠ {Number(result.tab_switches)} tab switch{Number(result.tab_switches) !== 1 && 'es'} recorded during this test.
+            </p>
+          )}
           {!result.already && (
             <p className="text-sm text-slate-400 mt-4 bg-[#0B0E1A] rounded-xl px-4 py-3 inline-block">
               {passed
@@ -121,20 +180,27 @@ export default function TestTaker() {
 
   // --- pre-start: instructions ---
   if (!started) {
+    const mode = paper.drive?.test_mode || 'aptitude';
+    const aptCount = questions.filter((qq) => (qq.type || 'aptitude') === 'aptitude').length;
+    const codeCount = questions.filter((qq) => qq.type === 'coding').length;
+    const testKind = mode === 'coding' ? 'Coding Test' : mode === 'both' ? 'Aptitude + Coding Test' : 'Aptitude Test';
     return (
       <div className="max-w-xl mx-auto">
         <div className="cf-card cf-rise">
-          <h2 className="text-xl font-bold text-slate-100">{paper.drive?.title} — Aptitude Test</h2>
+          <h2 className="text-xl font-bold text-slate-100">{paper.drive?.title} — {testKind}</h2>
           {paper.session && (
             <p className="text-sm text-slate-400 mt-1">
               📍 {paper.session.title} · {formatDate(paper.session.starts_at)}
             </p>
           )}
           <ul className="mt-5 space-y-2.5 text-sm text-slate-400">
-            <li className="flex gap-2"><span>📝</span> {questions.length} multiple-choice questions, one attempt only.</li>
+            {aptCount > 0 && <li className="flex gap-2"><span>📝</span> {aptCount} multiple-choice question{aptCount !== 1 && 's'} — pick one answer.</li>}
+            {codeCount > 0 && <li className="flex gap-2"><span>💻</span> {codeCount} coding question{codeCount !== 1 && 's'} — write your code in the box; it is run and checked for you.</li>}
             <li className="flex gap-2"><span>⏱️</span> {paper.drive?.test_duration_min} minutes on the clock — auto-submits at zero.</li>
             <li className="flex gap-2"><span>🎯</span> Grading is instant and automatic.</li>
-            <li className="flex gap-2"><span>⚠️</span> Don't refresh mid-test; your answers are kept only on submit.</li>
+            <li className="flex gap-2"><span>🔒</span> One attempt only — you can&rsquo;t retake this test.</li>
+            <li className="flex gap-2"><span>⚠️</span> Stay on this tab — switching away is recorded, and 3 switches submit your test automatically.</li>
+            <li className="flex gap-2"><span>⚠️</span> Don&rsquo;t refresh mid-test; your answers are kept only on submit.</li>
           </ul>
           <button onClick={start} className="cf-btn-primary w-full mt-6 !py-3.5 !text-base">Start test →</button>
         </div>
@@ -144,7 +210,14 @@ export default function TestTaker() {
 
   // --- in test ---
   const q = questions[index];
-  const answered = Object.keys(answers).length;
+  // Aptitude counts once an option is picked (index 0 counts too); coding
+  // counts once the student has typed something in the box.
+  const answered = questions.filter((qq) => {
+    const a = answers[qq.id];
+    return qq.type === 'coding'
+      ? typeof a === 'string' && a.trim().length > 0
+      : a !== undefined && a !== null;
+  }).length;
   const urgent = secondsLeft < 300;
 
   return (
@@ -158,30 +231,60 @@ export default function TestTaker() {
             <div className="h-full rounded-full transition-all" style={{ width: `${((index + 1) / questions.length) * 100}%`, background: '#FF5C38' }} />
           </div>
         </div>
-        <div className={`font-mono-tight text-xl font-bold px-4 py-2 rounded-xl ${urgent ? 'bg-rose-500/10 text-rose-300 animate-pulse' : 'bg-[#151B30] text-slate-300'}`}>
-          ⏱ {mmss(secondsLeft)}
+        <div className="flex items-center gap-2">
+          {tabSwitches > 0 && (
+            <span className="font-mono-tight text-sm font-bold px-3 py-2 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30">
+              ⚠ {tabSwitches}/{TAB_SWITCH_LIMIT} tab switches
+            </span>
+          )}
+          <div className={`font-mono-tight text-xl font-bold px-4 py-2 rounded-xl ${urgent ? 'bg-rose-500/10 text-rose-300 animate-pulse' : 'bg-[#151B30] text-slate-300'}`}>
+            ⏱ {mmss(secondsLeft)}
+          </div>
         </div>
       </div>
+
+      {tabSwitches > 0 && (
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-300">
+          ⚠ Tab switch detected — this is being recorded. {tabSwitches} of {TAB_SWITCH_LIMIT} — {TAB_SWITCH_LIMIT} switches will submit your test automatically.
+        </div>
+      )}
 
       <div className="cf-card cf-rise" key={q.id}>
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-lg font-semibold text-slate-100 leading-snug">{q.text}</h3>
           <span className="cf-chip bg-[#151B30] text-slate-400 shrink-0">{q.marks} mark{q.marks !== 1 && 's'}</span>
         </div>
-        <div className="space-y-2.5 mt-5">
-          {q.options.map((opt, oi) => (
-            <button
-              key={oi}
-              onClick={() => setAnswers((a) => ({ ...a, [q.id]: oi }))}
-              className={`w-full text-left rounded-xl border-2 px-4 py-3.5 text-sm font-medium transition-all ${answers[q.id] === oi ? 'border-[#FF5C38] bg-[#FF5C38]/10 text-[#FF8A6B] shadow-md shadow-black/30' : 'border-white/10 bg-[#12172A] text-slate-300 hover:border-[#FF5C38]/40'}`}
-            >
-              <span className={`inline-flex w-7 h-7 rounded-lg items-center justify-center text-xs font-bold mr-3 ${answers[q.id] === oi ? 'bg-[#FF5C38] text-white' : 'bg-[#151B30] text-slate-400'}`}>
-                {String.fromCharCode(65 + oi)}
-              </span>
-              {opt}
-            </button>
-          ))}
-        </div>
+        {q.type === 'coding' ? (
+          <div className="space-y-3 mt-5">
+            <div className="flex items-center gap-2">
+              <span className="cf-chip bg-[#151B30] text-slate-400">{q.language === 'python' ? 'Python' : 'JavaScript'}</span>
+              <span className="text-xs text-slate-400">Write your code below — it will be run and checked for you.</span>
+            </div>
+            <textarea
+              value={answers[q.id] ?? q.starter_code ?? ''}
+              onChange={(e) => setAnswers((a) => ({ ...a, [q.id]: e.target.value }))}
+              rows={12}
+              spellCheck={false}
+              className="cf-input font-mono !text-[13px] !leading-relaxed"
+              placeholder="Write your code here…"
+            />
+          </div>
+        ) : (
+          <div className="space-y-2.5 mt-5">
+            {q.options.map((opt, oi) => (
+              <button
+                key={oi}
+                onClick={() => setAnswers((a) => ({ ...a, [q.id]: oi }))}
+                className={`w-full text-left rounded-xl border-2 px-4 py-3.5 text-sm font-medium transition-all ${answers[q.id] === oi ? 'border-[#FF5C38] bg-[#FF5C38]/10 text-[#FF8A6B] shadow-md shadow-black/30' : 'border-white/10 bg-[#12172A] text-slate-300 hover:border-[#FF5C38]/40'}`}
+              >
+                <span className={`inline-flex w-7 h-7 rounded-lg items-center justify-center text-xs font-bold mr-3 ${answers[q.id] === oi ? 'bg-[#FF5C38] text-white' : 'bg-[#151B30] text-slate-400'}`}>
+                  {String.fromCharCode(65 + oi)}
+                </span>
+                {opt}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between">
