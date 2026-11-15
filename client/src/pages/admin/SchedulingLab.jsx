@@ -7,6 +7,8 @@ import { schedule as scheduleApi, drives as drivesApi, errMsg } from '../../api.
 import { useToast } from '../../components/Toast.jsx';
 import { formatDate } from '../../utils.js';
 import Badge from '../../components/Badge.jsx';
+import GanttChart from '../../components/GanttChart.jsx';
+import Spinner from '../../components/Spinner.jsx';
 
 const inputCls = 'w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500';
 const labelCls = 'block text-xs font-medium text-slate-600 mb-1.5';
@@ -21,9 +23,23 @@ function toLocalInput(d) {
   return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
+// Turn timetable entries into Gantt bars: minutes from the first start,
+// one bar per interview in order, sized by its length.
+function toGantt(items) {
+  if (!items?.length) return [];
+  const base = new Date(items[0].start ?? items[0].starts_at).getTime();
+  return items.map((t, i) => ({
+    id: t.student_id ?? t.id ?? i + 1,
+    label: (t.name ?? t.title ?? '').replace(/^Interview — /, ''),
+    start: Math.max(0, Math.round((new Date(t.start ?? t.starts_at).getTime() - base) / 60000)),
+    end: Math.max(0, Math.round((new Date(t.end ?? t.ends_at).getTime() - base) / 60000)),
+  }));
+}
+
 export default function SchedulingLab() {
   const { toast } = useToast();
   const [drives, setDrives] = useState([]);
+  const [drivesLoading, setDrivesLoading] = useState(true);
   const [driveId, setDriveId] = useState('');
   const [algo, setAlgo] = useState('priority');
   const [minutes, setMinutes] = useState(15);
@@ -49,6 +65,8 @@ export default function SchedulingLab() {
         }
       } catch (err) {
         toast(errMsg(err, 'Could not load drives.'), 'error');
+      } finally {
+        setDrivesLoading(false);
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -146,7 +164,7 @@ export default function SchedulingLab() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
         {/* Setup */}
         <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-100 p-5 space-y-5">
@@ -154,19 +172,27 @@ export default function SchedulingLab() {
             <h2 className="font-semibold text-slate-900 mb-1">1. Pick a drive</h2>
             <p className="text-xs text-slate-500 mb-3">Only shortlisted students get interview slots — no typing names.</p>
             <label className={labelCls}>Drive</label>
-            <select value={driveId} onChange={(e) => setDriveId(e.target.value)} className={inputCls}>
-              {drives.map((d) => (
-                <option key={d.id} value={d.id} disabled={(d.counts?.shortlisted ?? 0) === 0}>
-                  {d.title} — {d.counts?.shortlisted ?? 0} shortlisted
-                  {(d.counts?.shortlisted ?? 0) === 0 ? ' (shortlist first)' : ''}
-                </option>
-              ))}
-            </select>
-            {selected && (
-              <div className="flex gap-2 mt-2">
-                <Badge variant="info">{selected.status}</Badge>
-                <span className="text-xs text-slate-500 self-center">{selected.company?.name}</span>
-              </div>
+            {drivesLoading ? (
+              <Spinner text="Loading drives…" />
+            ) : drives.length === 0 ? (
+              <p className="text-sm text-slate-500">No drives yet — a recruiter needs to create one first.</p>
+            ) : (
+              <>
+                <select value={driveId} onChange={(e) => setDriveId(e.target.value)} className={inputCls}>
+                  {drives.map((d) => (
+                    <option key={d.id} value={d.id} disabled={(d.counts?.shortlisted ?? 0) === 0}>
+                      {d.title} — {d.counts?.shortlisted ?? 0} shortlisted
+                      {(d.counts?.shortlisted ?? 0) === 0 ? ' (shortlist first)' : ''}
+                    </option>
+                  ))}
+                </select>
+                {selected && (
+                  <div className="flex gap-2 mt-2">
+                    <Badge variant="info">{selected.status}</Badge>
+                    <span className="text-xs text-slate-500 self-center">{selected.company?.name}</span>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
@@ -183,7 +209,7 @@ export default function SchedulingLab() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>Minutes per interview</label>
               <input type="number" min="5" max="120" value={minutes} onChange={(e) => setMinutes(e.target.value)} className={inputCls} />
@@ -219,6 +245,11 @@ export default function SchedulingLab() {
                   </div>
                 ))}
               </div>
+              <div className="mt-5">
+                <h3 className="text-sm font-bold text-slate-900 mb-2">Timeline</h3>
+                <GanttChart gantt={toGantt(result.existing)} />
+                <p className="text-xs text-slate-400 mt-1">Each bar is one interview, in order, sized by its length.</p>
+              </div>
               <button onClick={startOver} className="mt-4 border border-rose-200 text-rose-700 hover:bg-rose-50 text-sm font-semibold rounded-xl px-4 py-2 transition-colors">
                 Start over (delete timetable)
               </button>
@@ -251,7 +282,7 @@ export default function SchedulingLab() {
                     </div>
                   ))}
                 </div>
-                <div className="grid grid-cols-3 gap-3 mt-4 text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4 text-sm">
                   <div className="bg-slate-50 rounded-xl px-4 py-3">
                     <div className="text-xs text-slate-500 uppercase tracking-wide">Interviews</div>
                     <div className="font-semibold text-slate-900 mt-0.5">{result.timeline.length}</div>
@@ -265,11 +296,16 @@ export default function SchedulingLab() {
                     <div className="font-semibold text-slate-900 mt-0.5">{result.algorithm === 'priority' ? 'Highest marks first' : 'Application order'}</div>
                   </div>
                 </div>
+                <div className="mt-5">
+                  <h3 className="text-sm font-bold text-slate-900 mb-2">Timeline</h3>
+                  <GanttChart gantt={toGantt(result.timeline)} />
+                  <p className="text-xs text-slate-400 mt-1">Each bar is one interview, in order, sized by its length.</p>
+                </div>
               </div>
               {compare && (
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5">
                   <h2 className="font-semibold text-slate-900 mb-3">Which ordering rule is fairer?</h2>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {compare.map((c) => (
                       <div key={c.id} className="border border-slate-100 rounded-xl p-4">
                         <div className="text-sm font-semibold text-slate-900">{c.label}</div>

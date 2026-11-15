@@ -1,7 +1,12 @@
-# Team Contributions — Phase 1
+# Team Contributions — Phase 1 + Phase 2
 
 What each member designed, built and owns in CampusFlow OS. Every module carries a real
 OS concept, real DBMS work, and its own UI screens.
+
+> **Phase 2 (2026-11-10):** all 14 planned features are built — see
+> [02_PHASE2_PLAN.md](02_PHASE2_PLAN.md) and the walkthrough in
+> [DEMO_SCRIPT.md](DEMO_SCRIPT.md). Phase 2 additions per member are listed in
+> "Phase 2 additions" below; the Phase 1 record above is unchanged.
 
 ---
 
@@ -16,7 +21,7 @@ OS concept, real DBMS work, and its own UI screens.
   without wiping data, tracked in `schema_migrations` (`npm run db:migrate`)
 - **Migrations** — `database/migrate_v2.sql` so existing installs upgrade cleanly
 - **DB pool** — `server/src/dbms/db.js`: the shared connection pool, plus `tableCounts()`
-  and `healthCheck()` (powers the System Monitor stats)
+  and `healthCheck()` (powers the Live Monitor stats)
 - **Banker's safety check** — `server/src/os/banker.js`: every manual booking runs the
   safe-sequence check; unsafe requests are refused *with an explanation of what would
   over-allocate*
@@ -114,17 +119,73 @@ exactly 10 win.
   assigned rooms in rotation, straight from the inventory
 - **Reports page** — placement progress per drive and per company
 - **Lock observability** — `lock_events` table + `server/src/os/locks.js`: every acquire/wait/release
-  is recorded with wait times (feeds the System Monitor's live lock table)
+  is recorded with wait times (feeds the Live Monitor's booking activity)
 - **Transactional writes** — `server/src/dbms/transactions.js`: `withTransaction()` plus the
   multi-statement operations that need it — question-set replacement and test-result recording
   (result row + status flip, never one without the other)
 - **Audit-trail reads** — `server/src/dbms/audit.js`: recent activity, per-record history and
-  GROUP-BY summaries over the trigger-written `audit_log` (powers the System Monitor feed)
+  GROUP-BY summaries over the trigger-written `audit_log` (powers the Live Monitor feed)
 
 **OS concept:** resource-allocation graph, lock observability, deadlock avoidance.
 **DBMS concept:** ACID transactions, audit-trail queries, views, audit triggers on allocations.
 
 ---
+
+---
+
+## Phase 2 additions (2026-11-10)
+
+Shared foundation (all waves build on it): `database/migrate_v4.sql` (+ the
+`schema.sql` mirror for fresh installs), `server/src/mailer.js` (email that never
+crashes the request), `server/src/realtime.js` (Server-Sent Events live updates),
+`server/src/utils/csv.js` (RFC 4180 CSV). Verified in the sandbox as far as
+possible without MySQL: `node --check` on every changed server file, `g++`
+compile of the lab agent, `vite build` passing, API boot + `/api/health` OK.
+Live database runs (migrations, endpoints, browser flows) need a laptop with
+MySQL — see [DEMO_SCRIPT.md](DEMO_SCRIPT.md).
+
+### Ishika Rawat (M1) — communication & accounts
+- **Email notifications** — `notifyUser()` in `server/src/mailer.js`; `pipeline.js`
+  `notify()` delegates to it, so bell + email can never drift apart.
+- **Password reset** — forgot/reset flow with 1-hour single-use tokens
+  (`users.reset_token`), identical reply for unknown emails (no user-enumeration).
+- **Student profiles** — editable page (photo, skills, resume PDF as base64 in
+  the DB, no new upload dependency); server-side type/size validation.
+- **Real-time updates** — SSE endpoint + `connectLive()` client helper; bell and
+  student dashboard refresh live, 30 s polling kept as fallback.
+
+### Akansha Parley (M2) — a fuller hiring process
+- **Interviewer feedback forms** — one score per interviewer per student
+  (UNIQUE key), consolidated scorecard (AVG + remarks) for the recruiter.
+- **Multi-round process** — `drive_rounds` table, one active round at a time;
+  publishing uses the active round's cutoff, single-round drives unchanged.
+- **Offer letters** — server-side template, idempotent generation
+  (`NOT EXISTS` + UNIQUE key), printable letter page with print-to-PDF.
+- **Drive analytics** — score buckets, branch-wise shortlist rates, stage
+  drop-off, all in `dbms/reports.js` (`analytics()`), plain div bars, no chart library.
+
+### Trisha Dabral (M3) — deeper systems work
+- **C++ lab-monitoring agent** — `agent/lab-agent.cpp` (g++, zero dependencies,
+  POSIX sockets, `/proc/loadavg`); reports up/free/busy to
+  `POST /api/lab-agent/report` (shared-key auth); scheduler prefers labs with
+  the most free machines, capacity-only when no agent data exists.
+- **Deadlock demo** — `server/src/os/deadlock-demo.js` (wait-for graph + DFS
+  cycle detection, pure in-memory, demo-only data) in the Live Monitor;
+  detection + recovery, victim = younger booking.
+- **Audit log viewer** — searchable/filterable admin page (`/admin/audit`)
+  wiring `dbms/audit.js` (`searchActivity`, `entityHistory`, `activitySummary`).
+
+### Akshay Singh Gusain (M4) — operations at scale
+- **Waitlist management** — full sessions take a waiting list; cancellation
+  auto-promotes the next student under the same slot lock (capacity re-checked)
+  and notifies them; pipeline auto-scheduler never waitlists.
+- **Resource calendar** — week view of labs/rooms, click to create manual
+  events, drag manual events to move them, strict interval-overlap check.
+- **Report exports** — one-click CSV of drive reports and rosters reusing
+  `reports.js` queries; print via the existing print stylesheet (no PDF library).
+- **Placement statistics** — year-wise placement % (distinct students, not
+  applications), average package from offer letters, top recruiters; safe
+  empty states, never NaN.
 
 ## How we worked
 

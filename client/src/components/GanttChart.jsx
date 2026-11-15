@@ -32,7 +32,7 @@ export default function GanttChart({ gantt = [] }) {
       <div className="relative h-5 mt-1 text-[11px] text-slate-400 font-mono-tight">
         <span className="absolute left-0">0</span>
         <span className="absolute left-1/2 -translate-x-1/2">{Math.round(total / 2)}</span>
-        <span className="absolute right-0">{total} units</span>
+        <span className="absolute right-0">{total} min</span>
       </div>
     </div>
   );

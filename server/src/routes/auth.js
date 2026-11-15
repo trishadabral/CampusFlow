@@ -1,8 +1,10 @@
 // Auth routes: register, login, me.
 const express = require('express');
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const pool = require('../dbms/db');
+const { sendMail } = require('../mailer');
 const { authenticateToken } = require('../middleware/auth');
 
 const router = express.Router();
@@ -101,6 +103,86 @@ router.post('/login', async (req, res, next) => {
 // GET /auth/me
 router.get('/me', authenticateToken, (req, res) => {
   res.json({ user: publicUser(req.user) });
+});
+
+// Always the same reply, whether or not the email is registered —
+// the response must never reveal which emails have an account.
+const FORGOT_REPLY = 'If an account exists for that email, a reset link has been sent.';
+
+// POST /auth/forgot-password { email }
+// If the email belongs to a user, store a random one-hour token and email a
+// reset link. Email is best-effort (sendMail never throws): if SMTP is not
+// set up, the endpoint still returns success.
+router.post('/forgot-password', async (req, res, next) => {
+  try {
+    const { email } = req.body || {};
+    if (!email) {
+      return res.status(400).json({ error: 'Please enter your email address.' });
+    }
+    const [rows] = await pool.query('SELECT id, name FROM users WHERE email = ?', [email]);
+    const user = rows[0];
+    if (user) {
+      const token = crypto.randomBytes(32).toString('hex');
+      const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+      await pool.query(
+        'UPDATE users SET reset_token = ?, reset_token_expires = ? WHERE id = ?',
+        [token, expires, user.id]
+      );
+      const appUrl = (process.env.APP_URL || 'http://localhost:5173').replace(/\/$/, '');
+      const link = `${appUrl}/reset-password?token=${token}`;
+      await sendMail({
+        to: email,
+        subject: 'Reset your CampusFlow password',
+        text:
+          `Hi ${user.name},\n\n` +
+          `Someone asked to reset the password for this CampusFlow account. ` +
+          `Use the link below to choose a new password. The link works for 1 hour and can only be used once.\n\n` +
+          `${link}\n\n` +
+          `If you did not ask for this, just ignore this email — your password stays the same.`,
+      });
+    }
+    res.json({ message: FORGOT_REPLY });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// POST /auth/reset-password { token, password }
+// The token is single-use: it is cleared as soon as the password changes,
+// and it stops working after 1 hour.
+router.post('/reset-password', async (req, res, next) => {
+  try {
+    const { token, password } = req.body || {};
+    if (!token || !password) {
+      return res.status(400).json({ error: 'A reset link and a new password are required.' });
+    }
+    if (password.length < 8) {
+      return res.status(400).json({ error: 'Your new password must be at least 8 characters long.' });
+    }
+    const [rows] = await pool.query(
+      'SELECT id, reset_token_expires FROM users WHERE reset_token = ?',
+      [token]
+    );
+    const user = rows[0];
+    if (!user) {
+      return res.status(400).json({
+        error: 'This reset link is not valid. Please request a new one from the login page.',
+      });
+    }
+    if (!user.reset_token_expires || new Date(user.reset_token_expires).getTime() <= Date.now()) {
+      return res.status(400).json({
+        error: 'This reset link has expired. Please request a new one from the login page.',
+      });
+    }
+    const hash = await bcrypt.hash(password, 10);
+    await pool.query(
+      'UPDATE users SET password_hash = ?, reset_token = NULL, reset_token_expires = NULL WHERE id = ?',
+      [hash, user.id]
+    );
+    res.json({ message: 'Your password has been changed. You can now log in with your new password.' });
+  } catch (err) {
+    next(err);
+  }
 });
 
 module.exports = router;

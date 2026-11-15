@@ -25,12 +25,17 @@ export default function NotificationsBell() {
   useEffect(() => {
     load();
     const id = setInterval(load, 30000);
+    // Live updates are the fast path: refetch the moment something
+    // changes instead of waiting for the next 30-second poll.
+    const onLive = () => load();
+    window.addEventListener('campusflow-live', onLive);
     const onClick = (e) => {
       if (boxRef.current && !boxRef.current.contains(e.target)) setOpen(false);
     };
     document.addEventListener('mousedown', onClick);
     return () => {
       clearInterval(id);
+      window.removeEventListener('campusflow-live', onLive);
       document.removeEventListener('mousedown', onClick);
     };
   }, []);
@@ -40,6 +45,17 @@ export default function NotificationsBell() {
       await notifApi.readAll();
       setUnread(0);
       setItems((list) => list.map((n) => ({ ...n, is_read: true })));
+    } catch (_) {}
+  };
+
+  // Opening one unread item marks just that one read (badge drops by one).
+  // The state updates immediately; a failed call is corrected on the next poll.
+  const markOneRead = async (n) => {
+    if (n.is_read) return;
+    setUnread((u) => Math.max(0, u - 1));
+    setItems((list) => list.map((x) => (x.id === n.id ? { ...x, is_read: true } : x)));
+    try {
+      await notifApi.markRead(n.id);
     } catch (_) {}
   };
 
@@ -81,7 +97,7 @@ export default function NotificationsBell() {
                 <Link
                   key={n.id}
                   to={n.link || '#'}
-                  onClick={() => setOpen(false)}
+                  onClick={() => { markOneRead(n); setOpen(false); }}
                   className={`block px-5 py-3.5 border-b border-slate-50 hover:bg-indigo-50/40 transition-colors ${!n.is_read ? 'bg-indigo-50/60' : ''}`}
                 >
                   <div className="flex items-start gap-2.5">

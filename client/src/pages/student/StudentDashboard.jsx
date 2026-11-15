@@ -4,7 +4,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { student as studentApi, drives as drivesApi, errMsg } from '../../api.js';
+import { student as studentApi, drives as drivesApi, offers as offersApi, errMsg } from '../../api.js';
 import { formatDate } from '../../utils.js';
 import { useToast } from '../../components/Toast.jsx';
 import Badge from '../../components/Badge.jsx';
@@ -20,7 +20,7 @@ const STATUS_META = {
   selected: { label: 'Selected 🎉', variant: 'success' },
 };
 
-function JourneyCard({ item, index }) {
+function JourneyCard({ item, index, responding, onRespond }) {
   const meta = STATUS_META[item.application.status] ?? STATUS_META.applied;
   const canTakeTest = item.testSession && !item.result;
   return (
@@ -54,6 +54,112 @@ function JourneyCard({ item, index }) {
           </div>
         )}
       </div>
+
+      {item.offer && (
+        <div className={`rounded-2xl p-4 border mt-3 ${item.offer.status === 'accepted' ? 'bg-emerald-50 border-emerald-200' : item.offer.status === 'declined' ? 'bg-slate-50 border-slate-200' : 'bg-amber-50 border-amber-200'}`}>
+          <div className="font-bold text-sm text-slate-900">
+            {item.offer.status === 'pending' ? '🎉 You have an offer!' : item.offer.status === 'accepted' ? '🎉 Offer accepted' : 'Offer declined'}
+          </div>
+          <div className="text-sm text-slate-500 mt-0.5">
+            {item.offer.package_lpa != null ? `₹${item.offer.package_lpa} LPA` : 'Package to be confirmed'}
+            {item.offer.joining_date ? ` · Joining ${formatDate(item.offer.joining_date).split(',')[0]}` : ''}
+          </div>
+          {item.offer.status === 'pending' ? (
+            <div className="flex gap-2 mt-3 flex-wrap">
+              <button onClick={() => onRespond(item.offer.id, 'accepted')} disabled={responding} className="cf-btn-success !py-2">
+                {responding ? 'Sending…' : 'Accept offer'}
+              </button>
+              <button
+                onClick={() => onRespond(item.offer.id, 'declined')} disabled={responding}
+                className="text-sm font-semibold text-rose-700 hover:text-rose-900 border border-rose-200 hover:border-rose-300 rounded-xl px-4 py-2 bg-white"
+              >
+                Decline
+              </button>
+            </div>
+          ) : (
+            <div className="text-sm font-semibold text-slate-700 mt-2">
+              You {item.offer.status === 'accepted' ? 'accepted' : 'declined'} this offer
+              {item.offer.responded_at ? ` on ${formatDate(item.offer.responded_at).split(',')[0]}` : ''}.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// One "what happens next for you" card, built from the journey: the single
+// most pressing next step first, then anything else coming up.
+function nextActions(journey) {
+  const items = [];
+  for (const item of journey) {
+    if (item.application.status === 'rejected') continue;
+    const interviewStep = (item.steps ?? []).find((s) => s.key === 'interview');
+    if (item.offer?.status === 'pending') {
+      items.push({
+        priority: 1,
+        text: `Your offer from ${item.drive.company} is waiting — accept or decline it.`,
+        link: `/student/drives/${item.drive.id}`, linkLabel: 'View your offer',
+      });
+    } else if (item.offer?.status === 'accepted') {
+      items.push({
+        priority: 6,
+        text: `You accepted the offer from ${item.drive.company}${item.offer.joining_date ? ` — joining ${formatDate(item.offer.joining_date).split(',')[0]}` : ''}.`,
+        link: `/student/drives/${item.drive.id}`, linkLabel: 'View your offer',
+      });
+    } else if (item.interview) {
+      items.push({
+        priority: 2,
+        text: `Your interview with ${item.drive.company} is on ${formatDate(item.interview.starts_at)}${item.interview.venue ? ` at ${item.interview.venue}` : ''}.`,
+        link: `/student/drives/${item.drive.id}`, linkLabel: 'See details',
+      });
+    } else if (item.testSession && !item.result) {
+      items.push({
+        priority: 3,
+        text: `Take your test for ${item.drive.company} — ${item.testSession.title} on ${formatDate(item.testSession.starts_at)}.`,
+        link: `/student/tests/${item.drive.id}`, linkLabel: 'Take the test now',
+      });
+    } else if (item.result && (item.application.status === 'shortlisted' || item.application.status === 'selected')) {
+      items.push({
+        priority: 4,
+        text: interviewStep?.detail
+          ? `${item.drive.company}: ${interviewStep.detail}`
+          : `You were shortlisted by ${item.drive.company} — your interview time will appear here once it is scheduled.`,
+        link: `/student/drives/${item.drive.id}`, linkLabel: 'See the drive',
+      });
+    } else if (item.testSession && item.result) {
+      items.push({
+        priority: 4,
+        text: `You took the test for ${item.drive.company} — your result will appear here once it is published.`,
+        link: `/student/drives/${item.drive.id}`, linkLabel: 'See the drive',
+      });
+    } else if (!item.testSession) {
+      items.push({
+        priority: 5,
+        text: `Your test for ${item.drive.company} will be scheduled once applications close — check back here.`,
+        link: `/student/drives/${item.drive.id}`, linkLabel: 'See the drive',
+      });
+    }
+  }
+  return items.sort((a, b) => a.priority - b.priority);
+}
+
+function NextActionCard({ journey }) {
+  const actions = nextActions(journey);
+  if (!actions.length) return null;
+  const [top, ...rest] = actions;
+  return (
+    <div className="cf-card cf-rise !border-indigo-200 bg-indigo-50/60">
+      <h3 className="cf-section-title">What happens next for you</h3>
+      <p className="text-sm text-slate-700 mt-2">{top.text}</p>
+      <Link to={top.link} className="cf-btn-primary !py-2 mt-3 inline-block">{top.linkLabel}</Link>
+      {rest.length > 0 && (
+        <ul className="mt-4 space-y-1.5 border-t border-indigo-100 pt-3">
+          {rest.slice(0, 3).map((a, i) => (
+            <li key={i} className="text-sm text-slate-500">• {a.text}</li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -64,28 +170,49 @@ export default function StudentDashboard() {
   const [loading, setLoading] = useState(true);
   const [journey, setJourney] = useState([]);
   const [eligibleCount, setEligibleCount] = useState(0);
+  const [responding, setResponding] = useState(false);
+
+  const respondOffer = async (offerId, decision) => {
+    setResponding(true);
+    try {
+      await offersApi.respond(offerId, decision);
+      toast(decision === 'accepted' ? 'Offer accepted — congratulations! 🎉' : 'Offer declined. The recruiter has been told.', 'success');
+      load();
+    } catch (err) {
+      toast(errMsg(err, 'Could not send your answer.'), 'error');
+    } finally {
+      setResponding(false);
+    }
+  };
+
+  const load = async () => {
+    try {
+      const [{ data: j }, { data: open }] = await Promise.all([
+        studentApi.journey(),
+        drivesApi.list({ status: 'open' }),
+      ]);
+      setJourney(j ?? []);
+      // Count open drives the student hasn't applied to and is eligible for.
+      const appliedIds = new Set((j ?? []).map((x) => x.drive.id));
+      const details = await Promise.all(
+        open.filter((d) => !appliedIds.has(d.id))
+          .map((d) => drivesApi.get(d.id).then((r) => r.data).catch(() => null))
+      );
+      setEligibleCount(details.filter((d) => d && d.eligibility?.eligible).length);
+    } catch (err) {
+      toast(errMsg(err, 'Could not load your dashboard.'), 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    (async () => {
-      try {
-        const [{ data: j }, { data: open }] = await Promise.all([
-          studentApi.journey(),
-          drivesApi.list({ status: 'open' }),
-        ]);
-        setJourney(j ?? []);
-        // Count open drives the student hasn't applied to and is eligible for.
-        const appliedIds = new Set((j ?? []).map((x) => x.drive.id));
-        const details = await Promise.all(
-          open.filter((d) => !appliedIds.has(d.id))
-            .map((d) => drivesApi.get(d.id).then((r) => r.data).catch(() => null))
-        );
-        setEligibleCount(details.filter((d) => d && d.eligibility?.eligible).length);
-      } catch (err) {
-        toast(errMsg(err, 'Could not load your dashboard.'), 'error');
-      } finally {
-        setLoading(false);
-      }
-    })();
+    load();
+    // Live updates: when a test is scheduled, a result is published or an
+    // interview is set, refresh right away instead of waiting for a reload.
+    const onLive = () => load();
+    window.addEventListener('campusflow-live', onLive);
+    return () => window.removeEventListener('campusflow-live', onLive);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -123,9 +250,12 @@ export default function StudentDashboard() {
           />
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          {journey.map((item, i) => <JourneyCard key={item.application.id} item={item} index={i} />)}
-        </div>
+        <>
+          <NextActionCard journey={journey} />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {journey.map((item, i) => <JourneyCard key={item.application.id} item={item} index={i} responding={responding} onRespond={respondOffer} />)}
+          </div>
+        </>
       )}
     </div>
   );

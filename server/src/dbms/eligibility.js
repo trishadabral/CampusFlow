@@ -34,7 +34,40 @@ function checkEligibility(student, drive) {
   if (!branches.includes(student.branch)) {
     reasons.push(`Branch ${student.branch} not eligible (allowed: ${branches.join(', ')})`);
   }
-  return { eligible: reasons.length === 0, reasons };
+  // Per-criterion breakdown (same rules, plain words): the drive pages show
+  // one line per check so the student can see exactly what passed and what
+  // didn't, instead of only the failures.
+  const backlogs = Number(student.backlogs);
+  const maxBacklogs = Number(drive.max_backlogs);
+  const checks = [
+    {
+      key: 'branch',
+      label: 'Branch',
+      passed: branches.includes(student.branch),
+      detail: branches.includes(student.branch)
+        ? `Your branch is ${student.branch} — this drive is open to ${branches.join(', ')}`
+        : `Your branch is ${student.branch} — this drive is open to ${branches.join(', ') || 'other branches'}`,
+    },
+    {
+      key: 'cgpa',
+      label: 'CGPA',
+      passed: Number(student.cgpa) >= Number(drive.min_cgpa),
+      detail: `Your CGPA is ${student.cgpa} — this drive needs ${drive.min_cgpa} or more`,
+    },
+    {
+      key: 'backlogs',
+      label: 'Backlogs',
+      passed: backlogs <= maxBacklogs,
+      detail: `You have ${backlogs} backlog${backlogs === 1 ? '' : 's'} — this drive allows at most ${maxBacklogs}`,
+    },
+    {
+      key: 'graduation_year',
+      label: 'Graduation year',
+      passed: Number(student.graduation_year) === Number(drive.graduation_year),
+      detail: `You graduate in ${student.graduation_year} — this drive is for the ${drive.graduation_year} batch`,
+    },
+  ];
+  return { eligible: reasons.length === 0, reasons, checks };
 }
 
 // findEligibleStudents(drive) — every student passing the drive's criteria,

@@ -46,6 +46,9 @@ export default function MyDrives() {
               { key: 'stage', label: 'Stage', render: (d) => <Badge variant={STAGE_VARIANT[d.status] ?? 'neutral'}>{d.status}</Badge> },
               { key: 'applied', label: 'Applied', render: (d) => <span className="font-semibold">{d.counts?.applied ?? 0}</span> },
               { key: 'shortlisted', label: 'Shortlisted', render: (d) => d.counts?.shortlisted ?? 0 },
+              { key: 'notes', label: 'Notes needed', render: (d) => (d.feedback_pending ?? 0) > 0
+                ? <span className="font-semibold text-amber-700">{d.feedback_pending}</span>
+                : <span className="text-slate-400">0</span> },
               { key: 'deadline', label: 'Apply by', render: (d) => formatDate(d.application_deadline).split(',')[0] },
               { key: 'open', label: '', render: (d) => <Link to={`/recruiter/drives/${d.id}`} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800">Open →</Link> },
             ]}

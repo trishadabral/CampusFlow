@@ -37,6 +37,7 @@ export default function Users() {
   if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading users…</div>;
 
   return (
+    <div className="space-y-6">
     <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
       <div className="px-5 py-4 border-b border-slate-100">
         <h2 className="font-semibold text-slate-900">Users</h2>
@@ -61,6 +62,7 @@ export default function Users() {
           rows={rows}
         />
       )}
+    </div>
     </div>
   );
 }

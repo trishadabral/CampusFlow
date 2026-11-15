@@ -9,6 +9,8 @@ function shapeSlot(row) {
   return {
     id: row.id,
     drive_id: row.drive_id,
+    resource_id: row.resource_id ?? null,
+    venue: row.venue ?? null,
     type: row.type,
     title: row.title,
     starts_at: row.starts_at,
@@ -24,7 +26,9 @@ router.get('/', async (req, res, next) => {
   try {
     const { drive_id } = req.query;
     const [rows] = await pool.query(
-      `SELECT * FROM slots ${drive_id ? 'WHERE drive_id = ?' : ''} ORDER BY starts_at`,
+      `SELECT s.*, r.name AS venue FROM slots s
+       LEFT JOIN resources r ON r.id = s.resource_id
+       ${drive_id ? 'WHERE s.drive_id = ?' : ''} ORDER BY s.starts_at`,
       drive_id ? [drive_id] : []
     );
     res.json(rows.map(shapeSlot));
@@ -36,7 +40,7 @@ router.get('/', async (req, res, next) => {
 // POST /slots — recruiter creates a test/interview slot
 router.post('/', authenticateToken, requireRole('recruiter', 'admin'), async (req, res, next) => {
   try {
-    const { drive_id, type, title, starts_at, ends_at, capacity } = req.body || {};
+    const { drive_id, resource_id, type, title, starts_at, ends_at, capacity } = req.body || {};
     if (!drive_id || !type || !title || !starts_at || !ends_at || capacity == null) {
       return res
         .status(400)
@@ -55,11 +59,22 @@ router.post('/', authenticateToken, requireRole('recruiter', 'admin'), async (re
     if (!drives.length) {
       return res.status(404).json({ error: 'Drive not found.' });
     }
+    // Venue is optional, but when given it must be a real room/lab.
+    if (resource_id != null && resource_id !== '') {
+      const [venues] = await pool.query('SELECT id FROM resources WHERE id = ?', [resource_id]);
+      if (!venues.length) {
+        return res.status(404).json({ error: 'Venue not found.' });
+      }
+    }
     const [result] = await pool.query(
-      'INSERT INTO slots (drive_id, type, title, starts_at, ends_at, capacity) VALUES (?, ?, ?, ?, ?, ?)',
-      [drive_id, type, title, starts_at, ends_at, capacity]
+      'INSERT INTO slots (drive_id, resource_id, type, title, starts_at, ends_at, capacity) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [drive_id, resource_id || null, type, title, starts_at, ends_at, capacity]
     );
-    const [rows] = await pool.query('SELECT * FROM slots WHERE id = ?', [result.insertId]);
+    const [rows] = await pool.query(
+      `SELECT s.*, r.name AS venue FROM slots s
+       LEFT JOIN resources r ON r.id = s.resource_id WHERE s.id = ?`,
+      [result.insertId]
+    );
     res.status(201).json({ slot: shapeSlot(rows[0]) });
   } catch (err) {
     next(err);

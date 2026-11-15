@@ -4,13 +4,15 @@
 // The manual allocation board below still runs the Banker's safety check.
 
 import React, { useEffect, useState } from 'react';
-import { resources as resourcesApi, allocations as allocationsApi, errMsg } from '../../api.js';
-import { formatDate, titleCase } from '../../utils.js';
+import { resources as resourcesApi, allocations as allocationsApi, labAgent as labAgentApi, errMsg } from '../../api.js';
+import { formatDate, timeAgo, titleCase } from '../../utils.js';
 import { useToast } from '../../components/Toast.jsx';
 import Badge from '../../components/Badge.jsx';
 import EmptyState from '../../components/EmptyState.jsx';
 
+const MACHINE_BADGE = { free: 'success', busy: 'warning', up: 'info', down: 'danger' };
 const TYPE_BADGE = { lab: 'info', room: 'success', interviewer: 'warning' };
+const MACHINE_LABEL = { free: 'Free', busy: 'Busy', up: 'Up', down: 'Down' };
 const TYPE_HINT = {
   lab: 'Test sessions are auto-batched into labs by capacity, biggest first.',
   room: 'Interviews are spread across rooms in rotation.',
@@ -22,6 +24,7 @@ export default function Resources() {
   const [loading, setLoading] = useState(true);
   const [resources, setResources] = useState([]);
   const [allocs, setAllocs] = useState([]);
+  const [machines, setMachines] = useState(null); // null = not loaded yet
   const [saving, setSaving] = useState(false);
   const [allocating, setAllocating] = useState(false);
   const [verdict, setVerdict] = useState(null);
@@ -39,6 +42,13 @@ export default function Resources() {
       toast(errMsg(err, 'Could not load resources.'), 'error');
     } finally {
       setLoading(false);
+    }
+    // Lab machines are a bonus panel — a failure here never blocks the page.
+    try {
+      const { data } = await labAgentApi.status();
+      setMachines(data ?? []);
+    } catch {
+      setMachines([]);
     }
   };
 
@@ -78,6 +88,7 @@ export default function Resources() {
       await allocationsApi.create({
         resource_id: Number(allocForm.resource_id),
         purpose: allocForm.purpose.trim(),
+        seats_needed: Math.max(1, Number(allocForm.seats_needed) || 1),
         starts_at: allocForm.starts_at,
         ends_at: allocForm.ends_at,
       });
@@ -177,6 +188,33 @@ export default function Resources() {
             ))
           )}
         </div>
+      </div>
+
+      {/* Lab machines — live reports from the C++ lab agent */}
+      <div className="cf-card cf-rise">
+        <h2 className="cf-section-title">Lab machines</h2>
+        <p className="cf-section-sub mb-4">
+          Live status reported by the lab agent running on each machine. Test sessions prefer labs with free machines.
+        </p>
+        {machines === null ? (
+          <p className="text-sm text-slate-500">Checking for lab reports…</p>
+        ) : machines.length === 0 ? (
+          <p className="text-sm text-slate-500">No lab reports yet — run the lab agent to see live machine status.</p>
+        ) : (
+          <ul className="space-y-2">
+            {machines.map((m) => (
+              <li key={m.id} className="border border-slate-100 rounded-xl px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <span className="font-medium text-slate-900">{m.machine_name}</span>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    {m.lab_name ?? 'Unknown lab'}{m.last_seen ? ` · last seen ${timeAgo(m.last_seen)}` : ''}
+                  </div>
+                </div>
+                <Badge variant={MACHINE_BADGE[m.status] ?? 'neutral'}>{MACHINE_LABEL[m.status] ?? m.status}</Badge>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
 
       {/* Manual booking with safety check */}

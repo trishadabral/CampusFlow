@@ -73,6 +73,16 @@ npm run dev          # API runs at http://localhost:5000
 
 You should see: `Recreating database campusflow ...` → `Schema created` → `Done.`
 
+**Optional: email setup.** The app works without email — every message is also saved as an
+in-app notification. To also send emails, fill in the `SMTP_*` lines in `server/.env`
+(see `server/.env.example`); leave them blank and email is simply skipped, never an error.
+Links in emails use `APP_URL` (default `http://localhost:5173`).
+
+**Upgrading an existing database (Phase 2):** if you already have a CampusFlow database
+with data in it, don't reset — run `npm run db:migrate` from `server/` to apply the pending
+`database/migrate_v4.sql` upgrades. Fresh installs don't need this: `db:reset` already
+includes everything from `database/schema.sql`.
+
 ---
 
 ## 5. Frontend

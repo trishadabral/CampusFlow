@@ -3,7 +3,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { drives as drivesApi, errMsg } from '../../api.js';
+import { drives as drivesApi, slots as slotsApi, bookings as bookingsApi, offers as offersApi, errMsg } from '../../api.js';
 import { formatDate } from '../../utils.js';
 import { useToast } from '../../components/Toast.jsx';
 import Badge from '../../components/Badge.jsx';
@@ -14,7 +14,10 @@ export default function DriveDetail() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState(null);
+  const [slots, setSlots] = useState([]);
   const [applying, setApplying] = useState(false);
+  const [bookingSlot, setBookingSlot] = useState(null);
+  const [responding, setResponding] = useState(false);
 
   const load = async () => {
     try {
@@ -24,6 +27,12 @@ export default function DriveDetail() {
       toast(errMsg(err, 'Could not load this drive.'), 'error');
     } finally {
       setLoading(false);
+    }
+    try {
+      const { data: s } = await slotsApi.list(id);
+      setSlots(s ?? []);
+    } catch {
+      /* sessions are a bonus list — the drive still loads without them */
     }
   };
 
@@ -42,12 +51,46 @@ export default function DriveDetail() {
     }
   };
 
+  const respondOffer = async (decision) => {
+    if (!my_offer) return;
+    setResponding(true);
+    try {
+      await offersApi.respond(my_offer.id, decision);
+      toast(decision === 'accepted' ? 'Offer accepted — congratulations! 🎉' : 'Offer declined. The recruiter has been told.', 'success');
+      load();
+    } catch (err) {
+      toast(errMsg(err, 'Could not send your answer.'), 'error');
+    } finally {
+      setResponding(false);
+    }
+  };
+
+  const bookSeat = async (slot) => {
+    setBookingSlot(slot.id);
+    try {
+      const { data: res } = await bookingsApi.create(slot.id);
+      toast(
+        res.waitlisted
+          ? res.message || `You're #${res.position} on the waiting list.`
+          : `Seat booked for ${slot.title}. See you there!`,
+        'success'
+      );
+      load();
+    } catch (err) {
+      toast(errMsg(err, 'Could not book a seat.'), 'error');
+    } finally {
+      setBookingSlot(null);
+    }
+  };
+
   if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading drive…</div>;
   if (!data?.drive) return <div className="text-sm text-slate-500 py-10 text-center">Drive not found.</div>;
 
-  const { drive, eligibility, my_application, my_result, my_sessions = [], questions_count } = data;
-  const testSession = my_sessions.find((s) => s.type === 'test');
-  const interview = my_sessions.find((s) => s.type === 'interview');
+  const { drive, eligibility, my_application, my_result, my_sessions = [], my_offer, questions_count } = data;
+  const myBookingBySlot = new Map((my_sessions ?? []).map((s) => [s.slot_id, s]));
+  const testSession = my_sessions.find((s) => s.type === 'test' && s.status === 'confirmed');
+  const interview = my_sessions.find((s) => s.type === 'interview' && s.status === 'confirmed');
+  const waitlisted = my_sessions.filter((s) => s.status === 'waitlist');
 
   const steps = [
     { key: 'applied', label: 'Applied', state: my_application ? 'done' : 'current' },
@@ -95,8 +138,25 @@ export default function DriveDetail() {
               </ul>
             </div>
           )}
+          {/* Why am I eligible? — one plain-words line per rule. */}
+          {eligibility?.checks?.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-slate-100">
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-wide mb-2">How you match up</div>
+              <ul className="space-y-1.5">
+                {eligibility.checks.map((c) => (
+                  <li key={c.key} className="flex items-start gap-2 text-sm">
+                    <span className={c.passed ? 'text-emerald-600 font-bold' : 'text-rose-600 font-bold'} aria-hidden>
+                      {c.passed ? '✓' : '✗'}
+                    </span>
+                    <span className="text-slate-600">{c.detail}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       ) : (
+        <>
         <div className="cf-card cf-rise space-y-5">
           <div className="flex items-center justify-between">
             <h3 className="cf-section-title">Your progress</h3>
@@ -134,12 +194,90 @@ export default function DriveDetail() {
             </div>
           )}
 
-          {!testSession && (
+          {waitlisted.map((s) => (
+            <div key={s.id} className="bg-amber-50 border border-amber-200 rounded-2xl p-4">
+              <div className="font-bold text-amber-900 text-sm">⏳ You&apos;re #{s.waitlist_position} on the waiting list</div>
+              <div className="text-sm text-amber-800 mt-1">
+                {s.title}{s.venue ? ` · ${s.venue}` : ''} · {formatDate(s.starts_at)}
+              </div>
+              <p className="text-xs text-amber-700 mt-1">We&apos;ll notify you here if a seat opens up.</p>
+            </div>
+          ))}
+
+          {my_offer && (
+            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4">
+              <div className="font-bold text-emerald-900 text-sm">🎉 You have an offer from {drive.company?.name}</div>
+              <div className="text-sm text-emerald-800 mt-1">
+                {my_offer.package_lpa != null ? `₹${my_offer.package_lpa} LPA` : 'Package to be confirmed'}
+                {my_offer.joining_date ? ` · Joining ${formatDate(my_offer.joining_date).split(',')[0]}` : ''}
+              </div>
+              {my_offer.status === 'pending' ? (
+                <div className="flex gap-2 mt-3 flex-wrap">
+                  <button onClick={() => respondOffer('accepted')} disabled={responding} className="cf-btn-success !py-2">
+                    {responding ? 'Sending…' : 'Accept offer'}
+                  </button>
+                  <button
+                    onClick={() => respondOffer('declined')} disabled={responding}
+                    className="text-sm font-semibold text-rose-700 hover:text-rose-900 border border-rose-200 hover:border-rose-300 rounded-xl px-4 py-2 bg-white"
+                  >
+                    Decline
+                  </button>
+                </div>
+              ) : (
+                <div className="text-sm font-semibold text-emerald-900 mt-2">
+                  You {my_offer.status === 'accepted' ? 'accepted' : 'declined'} this offer
+                  {my_offer.responded_at ? ` on ${formatDate(my_offer.responded_at).split(',')[0]}` : ''}.
+                </div>
+              )}
+            </div>
+          )}
+
+          {!testSession && !waitlisted.some((s) => s.type === 'test') && (
             <p className="text-sm text-slate-500 bg-slate-50 rounded-xl px-4 py-3">
               🕐 Your test session will be scheduled automatically and appear here — plus a notification.
             </p>
           )}
         </div>
+
+        {slots.length > 0 && (
+          <div className="cf-card cf-rise space-y-3">
+            <h3 className="cf-section-title">Sessions — book a seat</h3>
+            <p className="text-sm text-slate-500">Pick a session below to reserve your seat. If it&apos;s full, you&apos;ll join the waiting list instead.</p>
+            <div className="space-y-2">
+              {slots.map((slot) => {
+                const mine = myBookingBySlot.get(slot.id);
+                return (
+                  <div key={slot.id} className="flex items-center justify-between gap-3 border border-slate-100 rounded-xl px-4 py-3 flex-wrap">
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-slate-900">
+                        {slot.title}
+                        <span className="ml-2 text-xs font-medium text-slate-400">{slot.type === 'test' ? 'Test' : 'Interview'}</span>
+                      </div>
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        {formatDate(slot.starts_at)}{slot.venue ? ` · ${slot.venue}` : ''}
+                        {` · ${slot.seats_left > 0 ? `${slot.seats_left} seat${slot.seats_left === 1 ? '' : 's'} left` : 'Full'}`}
+                      </div>
+                    </div>
+                    {mine?.status === 'confirmed' ? (
+                      <span className="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">✓ You&apos;re booked in</span>
+                    ) : mine?.status === 'waitlist' ? (
+                      <span className="text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-1.5">Waiting list #{mine.waitlist_position}</span>
+                    ) : (
+                      <button
+                        onClick={() => bookSeat(slot)}
+                        disabled={bookingSlot != null}
+                        className="cf-btn-primary !py-2"
+                      >
+                        {bookingSlot === slot.id ? 'Booking…' : 'Book a seat'}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        </>
       )}
     </div>
   );

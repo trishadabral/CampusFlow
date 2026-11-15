@@ -106,6 +106,16 @@ body {
   animation: cf-blink 1.6s ease-in-out infinite;
 }
 
+/* Offer letter printout: only the letter itself reaches the paper — the
+   sidebar, topbar and on-screen buttons stay out of the print. */
+@media print {
+  .cf-app-sidebar, .cf-app-topbar { display: none !important; }
+  .ml-60 { margin-left: 0 !important; }
+  main { padding: 0 !important; max-width: none !important; }
+  body { background: #fff !important; }
+  .offer-letter { border: none !important; box-shadow: none !important; border-radius: 0 !important; max-width: none !important; }
+}
+
 /* Gentle entrance for cards */
 @keyframes cf-rise {
   from { opacity: 0; transform: translateY(8px); }

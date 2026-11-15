@@ -6,6 +6,7 @@ const { tableCounts } = require('../dbms/db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { bookSeat } = require('../os/critical-section');
 const { recentActivity } = require('../dbms/audit');
+const { runDemo } = require('../os/deadlock-demo');
 
 const router = express.Router();
 
@@ -16,7 +17,7 @@ function parseLimit(value, def = 50, max = 500) {
 }
 
 // GET /monitor/locks?limit=50 — newest lock events first
-router.get('/locks', async (req, res, next) => {
+router.get('/locks', authenticateToken, requireRole('admin'), async (req, res, next) => {
   try {
     const limit = parseLimit(req.query.limit);
     const [rows] = await pool.query(
@@ -30,7 +31,7 @@ router.get('/locks', async (req, res, next) => {
 });
 
 // GET /monitor/stats — table counts + currently held locks
-router.get('/stats', async (req, res, next) => {
+router.get('/stats', authenticateToken, requireRole('admin'), async (req, res, next) => {
   try {
     const counts = await tableCounts();
     // A lock is "active" when the latest event for its (lock, holder) pair
@@ -57,7 +58,7 @@ router.get('/stats', async (req, res, next) => {
 
 // GET /monitor/activity?limit=50 — newest audit_log entries first
 // (SQL lives in dbms/audit.js; this route shapes the JSON)
-router.get('/activity', async (req, res, next) => {
+router.get('/activity', authenticateToken, requireRole('admin'), async (req, res, next) => {
   try {
     const rows = await recentActivity({ limit: req.query.limit });
     res.json(
@@ -141,6 +142,14 @@ router.post('/stress', authenticateToken, requireRole('admin'), async (req, res,
   } catch (err) {
     next(err);
   }
+});
+
+// POST /monitor/deadlock-demo — admin runs the guided deadlock demo.
+// Pure in-memory teaching demo (os/deadlock-demo.js): pretend bookings only,
+// never touches real bookings, slots or allocations. Stateless — the same
+// demo runs identically every time.
+router.post('/deadlock-demo', authenticateToken, requireRole('admin'), (req, res) => {
+  res.json(runDemo());
 });
 
 module.exports = router;

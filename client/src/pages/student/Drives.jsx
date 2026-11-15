@@ -49,8 +49,12 @@ function DriveCard({ detail, index, onApplied }) {
         <span className="cf-chip bg-slate-100 text-slate-600">{(drive.allowed_branches ?? []).join(', ')}</span>
         <span className="cf-chip bg-slate-100 text-slate-600">{questions_count ?? 0} test questions</span>
       </div>
-      {!my_application && !eligible && (eligibility?.reasons?.length > 0) && (
-        <p className="text-xs text-slate-400 mt-2">Why not: {eligibility.reasons[0]}</p>
+      {!my_application && (eligibility?.checks?.length > 0) && (
+        <ul className="mt-2 space-y-0.5">
+          {eligibility.checks.filter((c) => !c.passed).map((c) => (
+            <li key={c.key} className="text-xs text-slate-400">✗ {c.detail}</li>
+          ))}
+        </ul>
       )}
       <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
         <span className="text-xs text-slate-400">Apply by {formatDate(drive.application_deadline)}</span>

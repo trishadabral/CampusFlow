@@ -12,6 +12,7 @@
 // with a safety check. DBMS: set-based reads, one transaction for the slot writes.
 const express = require('express');
 const pool = require('../dbms/db');
+const { withActor } = require('../dbms/db');
 const { authenticateToken, requireRole } = require('../middleware/auth');
 const { simulate } = require('../os/cpu-scheduler');
 const { checkAllocation } = require('../os/banker');
@@ -19,7 +20,7 @@ const { checkAllocation } = require('../os/banker');
 const router = express.Router();
 
 // POST /schedule/simulate — ad-hoc simulation (FCFS / Priority only).
-router.post('/simulate', (req, res, next) => {
+router.post('/simulate', authenticateToken, requireRole('admin', 'recruiter'), (req, res, next) => {
   try {
     const { algorithm, interviews } = req.body || {};
     if (!['fcfs', 'priority'].includes(algorithm)) {
@@ -166,10 +167,14 @@ router.post(
             starts_at: windowStart,
             ends_at: windowEnd,
           });
-          const [aRes] = await pool.query(
-            `INSERT INTO allocations (resource_id, purpose, seats_needed, starts_at, ends_at, allocated_by)
-             VALUES (?, ?, ?, ?, ?, ?)`,
-            [resource.id, AUTO_PURPOSE(drive_id), students.length, windowStart, windowEnd, req.user.id]
+          // withActor: the INSERT fires the audit trigger on this connection,
+          // so the recruiter generating the timetable is recorded as the actor.
+          const [aRes] = await withActor(req.user.id, (conn) =>
+            conn.query(
+              `INSERT INTO allocations (resource_id, purpose, seats_needed, starts_at, ends_at, allocated_by)
+               VALUES (?, ?, ?, ?, ?, ?)`,
+              [resource.id, AUTO_PURPOSE(drive_id), students.length, windowStart, windowEnd, req.user.id]
+            )
           );
           lab = {
             status: 'reserved',

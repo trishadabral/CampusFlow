@@ -5,19 +5,30 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { monitor as monitorApi, slots as slotsApi, errMsg } from '../../api.js';
-import { formatDate, timeAgo } from '../../utils.js';
+import { formatDate, timeAgo, titleCase } from '../../utils.js';
 import { useToast } from '../../components/Toast.jsx';
 import Badge from '../../components/Badge.jsx';
 import DataTable from '../../components/DataTable.jsx';
+import Spinner from '../../components/Spinner.jsx';
 
 const ACTION_PILL = {
-  acquired: 'success',
-  waiting: 'warning',
-  released: 'neutral',
+  acquire: 'success',
+  wait: 'warning',
+  release: 'neutral',
 };
 
 // Plain-language labels for lock events.
-const ACTION_LABEL = { acquired: 'Booking', waiting: 'In queue', released: 'Done' };
+const ACTION_LABEL = { acquire: 'Booking', wait: 'In queue', release: 'Done' };
+
+// Same rendering as the Activity log: details arrive as an object
+// (server/src/routes/monitor.js parses the stored JSON), never a string.
+function detailsText(details) {
+  if (details == null) return '—';
+  if (typeof details === 'string') return details;
+  return Object.entries(details)
+    .map(([k, v]) => `${titleCase(k)}: ${v}`)
+    .join(' · ');
+}
 const holderName = (h) => (h === 'stress-test' ? 'Rush test' : h);
 const VERB = { INSERT: 'Created', UPDATE: 'Updated', DELETE: 'Removed' };
 
@@ -40,6 +51,9 @@ export default function KernelMonitor() {
   const { toast } = useToast();
   const [locks, setLocks] = useState([]);
   const [activity, setActivity] = useState([]);
+  const [stats, setStats] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const firstLoad = useRef(true);
   const [lockError, setLockError] = useState(null);
   const [slotList, setSlotList] = useState([]);
   const [stressSlot, setStressSlot] = useState('');
@@ -48,6 +62,14 @@ export default function KernelMonitor() {
   const [stressProgress, setStressProgress] = useState(0);
   const [stressResult, setStressResult] = useState(null);
   const progressTimer = useRef(null);
+  const [demoSteps, setDemoSteps] = useState([]);
+  const [demoSummary, setDemoSummary] = useState(null);
+  const [demoRunning, setDemoRunning] = useState(false);
+  const [demoShown, setDemoShown] = useState(0);
+  const demoTimer = useRef(null);
+
+  // Stop the staggered reveal if the page unmounts mid-demo.
+  useEffect(() => () => { clearInterval(demoTimer.current); clearInterval(progressTimer.current); }, []);
 
   // Live polling — lock table + audit log refresh every 2s.
   useEffect(() => {
@@ -60,7 +82,19 @@ export default function KernelMonitor() {
         setActivity(a ?? []);
         setLockError(null);
       } catch (err) {
-        if (alive) setLockError(errMsg(err, 'Could not reach the system monitor.'));
+        if (alive) setLockError(errMsg(err, 'Could not reach the Live Monitor.'));
+      }
+      // First render only: the tables start empty, so show a spinner
+      // instead of a wrongly empty page. Later polls refresh silently.
+      if (firstLoad.current) {
+        firstLoad.current = false;
+        if (alive) setLoading(false);
+      }
+      try {
+        const { data: s } = await monitorApi.stats();
+        if (alive) setStats(s ?? null);
+      } catch {
+        /* totals are a bonus strip — the live tables work without them */
       }
     };
     fetchAll();
@@ -95,10 +129,10 @@ export default function KernelMonitor() {
   const waiting = [];
   const seen = new Set();
   for (const l of locks) {
-    if (l.action === 'waiting' && !seen.has(`w-${l.holder}-${l.lock_name}`)) {
+    if (l.action === 'wait' && !seen.has(`w-${l.holder}-${l.lock_name}`)) {
       seen.add(`w-${l.holder}-${l.lock_name}`);
       waiting.push(l);
-    } else if (l.action === 'acquired' && !seen.has(`r-${l.holder}-${l.lock_name}`)) {
+    } else if (l.action === 'acquire' && !seen.has(`r-${l.holder}-${l.lock_name}`)) {
       seen.add(`r-${l.holder}-${l.lock_name}`);
       running.push(l);
     }
@@ -124,6 +158,43 @@ export default function KernelMonitor() {
     }
   };
 
+  const runDemo = async () => {
+    setDemoRunning(true);
+    setDemoSteps([]);
+    setDemoSummary(null);
+    setDemoShown(0);
+    try {
+      const { data } = await monitorApi.deadlockDemo();
+      const steps = data?.steps ?? [];
+      setDemoSteps(steps);
+      // Reveal one step at a time so the story reads in order.
+      let shown = 0;
+      demoTimer.current = setInterval(() => {
+        shown += 1;
+        setDemoShown(shown);
+        if (shown >= steps.length) {
+          clearInterval(demoTimer.current);
+          setDemoSummary(data?.summary ?? null);
+          setDemoRunning(false);
+        }
+      }, 700);
+    } catch (err) {
+      toast(errMsg(err, 'The demo failed to run.'), 'error');
+      setDemoRunning(false);
+    }
+  };
+
+  const resetDemo = () => {
+    clearInterval(demoTimer.current);
+    setDemoSteps([]);
+    setDemoSummary(null);
+    setDemoShown(0);
+    setDemoRunning(false);
+  };
+
+  const DEMO_BADGE = { lock: 'neutral', wait: 'warning', detect: 'danger', recover: 'success', done: 'success' };
+  const DEMO_LABEL = { lock: 'Took a seat', wait: 'Waiting', detect: 'Stuck in a circle', recover: 'Let one go first', done: 'Finished' };
+
   const renderProcess = (l) => (
     <div className="flex items-center justify-between px-4 py-2 text-sm border-b border-slate-50 last:border-0">
       <div className="min-w-0">
@@ -135,9 +206,34 @@ export default function KernelMonitor() {
   );
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {lockError && (
         <div className="bg-rose-50 border border-rose-200 text-rose-800 text-sm rounded-xl px-4 py-3">{lockError}</div>
+      )}
+
+      {loading ? (
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
+          <Spinner text="Loading live data…" />
+        </div>
+      ) : (
+        <>
+
+      {stats && (
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            ['Students', stats.students],
+            ['Drives', stats.drives],
+            ['Applications', stats.applications],
+            ['Bookings', stats.bookings],
+            ['Rooms & labs', stats.resources],
+            ['Bookings in progress', stats.active_locks],
+          ].map(([label, value]) => (
+            <div key={label} className="bg-white rounded-2xl shadow-sm border border-slate-100 px-4 py-3">
+              <div className="text-xl font-bold text-slate-900">{value ?? 0}</div>
+              <div className="text-xs text-slate-500 font-medium mt-0.5">{label}</div>
+            </div>
+          ))}
+        </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -160,7 +256,7 @@ export default function KernelMonitor() {
 
         {/* Who's booking right now */}
         <Panel title="Who's booking right now" sub="Live snapshot — who's getting a seat, and who's waiting in line.">
-          <div className="grid grid-cols-2 max-h-80 overflow-y-auto slim-scroll divide-x divide-slate-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 max-h-80 overflow-y-auto slim-scroll divide-x divide-slate-100">
             <div>
               <div className="px-4 py-2 text-xs font-semibold text-emerald-700 uppercase tracking-wide sticky top-0 bg-white">
                 Getting a seat ({running.length})
@@ -187,7 +283,7 @@ export default function KernelMonitor() {
                   <span className="text-slate-400">{formatDate(a.created_at)}</span>{' '}
                   <span className="text-indigo-600 font-semibold">{VERB[a.action] ?? a.action}</span>{' '}
                   <span className="text-slate-700">{a.entity}{a.entity_id ? ` #${a.entity_id}` : ''}</span>
-                  {a.details && <span className="text-slate-400"> — {a.details}</span>}
+                  {a.details && <span className="text-slate-400"> — {detailsText(a.details)}</span>}
                 </div>
               ))
             )}
@@ -197,7 +293,7 @@ export default function KernelMonitor() {
         {/* Rush-hour test */}
         <Panel title="Rush-hour test" sub="Pretend N students all tap “Book” in the same second for M seats. Exactly M should get through — never more.">
           <div className="px-5 py-4 space-y-4">
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">Slot</label>
                 <select value={stressSlot} onChange={(e) => setStressSlot(e.target.value)}
@@ -209,7 +305,7 @@ export default function KernelMonitor() {
               </div>
               <div>
                 <label className="block text-xs font-medium text-slate-600 mb-1.5">Students rushing at once</label>
-                <input type="number" min="2" max="1000" value={stressCount} onChange={(e) => setStressCount(e.target.value)}
+                <input type="number" min="1" max="200" value={stressCount} onChange={(e) => setStressCount(e.target.value)}
                   className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500" />
               </div>
             </div>
@@ -252,7 +348,56 @@ export default function KernelMonitor() {
             )}
           </div>
         </Panel>
+
+        {/* What happens when two bookings clash */}
+        <Panel title="What happens when two bookings clash" sub="Demo — uses pretend bookings; your real bookings are not touched. Two pretend bookings each grab a seat, then each wants the other's seat.">
+          <div className="px-5 py-4 space-y-3">
+            {demoSteps.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                Watch what happens when two bookings wait on each other forever — and how the system breaks the circle by letting one go first.
+              </p>
+            ) : (
+              <ol className="space-y-2">
+                {demoSteps.slice(0, demoShown).map((s) => (
+                  <li key={s.no}
+                    className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 text-sm ${
+                      s.kind === 'detect' ? 'bg-rose-50 border-rose-200' :
+                      s.kind === 'recover' ? 'bg-emerald-50 border-emerald-200' :
+                      'bg-white border-slate-100'
+                    }`}>
+                    <span className="w-6 h-6 shrink-0 rounded-full bg-slate-900 text-white text-xs font-bold flex items-center justify-center mt-0.5">{s.no}</span>
+                    <span className="flex-1 text-slate-700">{s.text}</span>
+                    <Badge variant={DEMO_BADGE[s.kind] ?? 'neutral'}>{DEMO_LABEL[s.kind] ?? s.kind}</Badge>
+                  </li>
+                ))}
+              </ol>
+            )}
+
+            {demoSummary && (
+              <div className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm text-slate-700">
+                <span className="font-semibold">{demoSummary.survivor}</span> finished;{' '}
+                <span className="font-semibold">{demoSummary.victim}</span> was asked to wait and try again.
+                <p className="text-xs text-slate-500 mt-1">{demoSummary.note}</p>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button onClick={runDemo} disabled={demoRunning}
+                className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white text-sm font-semibold rounded-xl px-4 py-2.5 transition-colors">
+                {demoRunning ? 'Running…' : demoSteps.length ? 'Run it again' : 'Start demo'}
+              </button>
+              {demoSteps.length > 0 && (
+                <button onClick={resetDemo}
+                  className="text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 bg-white rounded-xl px-4 py-2.5 transition-colors">
+                  Reset
+                </button>
+              )}
+            </div>
+          </div>
+        </Panel>
       </div>
+        </>
+      )}
     </div>
   );
 }

@@ -20,6 +20,46 @@ const pool = mysql.createPool({
 module.exports = pool;
 
 // ---------------------------------------------------------------------------
+// Actor attribution for the audit triggers (see database/schema.sql).
+//
+// The triggers read the MySQL session variable @actor_id, and a session
+// variable lives ONLY on its own connection — setting it with pool.query()
+// would land on a random pooled connection and be lost. So every write
+// that must be attributed checks out ONE connection, sets @actor_id on it,
+// does the write, then clears the variable before releasing the connection
+// (a stale value would otherwise be inherited by the next borrower).
+// When @actor_id is unset the triggers fall back to NULL ("System").
+// ---------------------------------------------------------------------------
+
+async function setActor(conn, actorId) {
+  await conn.query('SET @actor_id = ?', [actorId ?? null]);
+}
+
+async function clearActor(conn) {
+  try {
+    await conn.query('SET @actor_id = NULL');
+  } catch (_) {
+    // Connection already gone — nothing to clear.
+  }
+}
+
+// withActor(actorId, work) — run work(conn) on a connection carrying the actor.
+async function withActor(actorId, work) {
+  const conn = await pool.getConnection();
+  try {
+    await setActor(conn, actorId);
+    return await work(conn);
+  } finally {
+    await clearActor(conn);
+    conn.release();
+  }
+}
+
+module.exports.setActor = setActor;
+module.exports.clearActor = clearActor;
+module.exports.withActor = withActor;
+
+// ---------------------------------------------------------------------------
 // Executable SQL owned by this module (the pool is infrastructure; these
 // queries are the DBMS work: "how big is the database, and is it alive?").
 // ---------------------------------------------------------------------------

@@ -56,4 +56,58 @@ async function activitySummary({ days = 7 } = {}) {
   return rows.map((r) => ({ action: r.action, entity: r.entity, events: Number(r.events) }));
 }
 
-module.exports = { recentActivity, entityHistory, activitySummary };
+// searchActivity — the admin audit-log viewer: search + filters + pages.
+// q searches what was changed (entity, record id, details); entity/action/
+// actor narrow it down; from/to bound the date range. Newest first.
+// All values are parameters — nothing is ever spliced into the SQL.
+async function searchActivity({ q, entity, action, actorId, from, to, limit = 50, offset = 0 } = {}) {
+  const where = [];
+  const params = [];
+  if (q) {
+    const like = `%${q}%`;
+    where.push('(a.entity LIKE ? OR CAST(a.entity_id AS CHAR) LIKE ? OR CAST(a.details AS CHAR) LIKE ?)');
+    params.push(like, like, like);
+  }
+  if (entity) {
+    where.push('a.entity = ?');
+    params.push(entity);
+  }
+  if (action) {
+    where.push('a.action = ?');
+    params.push(action);
+  }
+  if (actorId != null) {
+    where.push('a.actor_id = ?');
+    params.push(actorId);
+  }
+  if (from) {
+    where.push('a.created_at >= ?');
+    params.push(from);
+  }
+  if (to) {
+    where.push('a.created_at <= ?');
+    params.push(to);
+  }
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+
+  const lim = Math.min(Math.max(parseLimit(limit, 50, 100), 1), 100);
+  const off = Math.max(Number(offset) || 0, 0);
+
+  const [[{ total }]] = await pool.query(
+    `SELECT COUNT(*) AS total FROM audit_log a ${whereSql}`,
+    params
+  );
+  const [rows] = await pool.query(
+    `SELECT a.id, a.action, a.entity, a.entity_id, a.details, a.created_at,
+            a.actor_id, u.name AS actor_name
+     FROM audit_log a
+     LEFT JOIN users u ON u.id = a.actor_id
+     ${whereSql}
+     ORDER BY a.id DESC
+     LIMIT ? OFFSET ?`,
+    [...params, lim, off]
+  );
+  return { rows, total: Number(total), limit: lim, offset: off };
+}
+
+module.exports = { recentActivity, entityHistory, activitySummary, searchActivity };

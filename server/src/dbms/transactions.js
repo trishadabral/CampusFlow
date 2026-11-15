@@ -14,11 +14,19 @@
 //   });
 
 const pool = require('./db');
+const { setActor, clearActor } = require('./db');
 
-async function withTransaction(work) {
+// withTransaction(work, actorId) — one connection, BEGIN … COMMIT, automatic
+// ROLLBACK on any failure, and the connection always returned to the pool.
+// actorId (optional) is the user the writes are attributed to: it is set as
+// the @actor_id session variable on this same connection, so the audit
+// triggers on bookings/applications/allocations record who acted, and
+// cleared before the connection goes back to the pool.
+async function withTransaction(work, actorId) {
   const conn = await pool.getConnection();
   try {
     await conn.beginTransaction();
+    if (actorId != null) await setActor(conn, actorId);
     const result = await work(conn);
     await conn.commit();
     return result;
@@ -30,6 +38,7 @@ async function withTransaction(work) {
     }
     throw err;
   } finally {
+    if (actorId != null) await clearActor(conn);
     conn.release(); // always return the connection to the pool
   }
 }
@@ -80,8 +89,15 @@ async function recordTestResult(driveId, studentId, { score, total, percentage, 
        WHERE drive_id = ? AND student_id = ? AND status = 'applied'`,
       [driveId, studentId]
     );
-    return { score, total, percentage };
-  });
+    // submitted_at defaults to NOW() in the DB — read it back so the
+    // submit response matches the already-submitted read path, which
+    // returns the same field (both shown by TestTaker).
+    const [[row]] = await conn.query(
+      'SELECT submitted_at FROM test_results WHERE drive_id = ? AND student_id = ?',
+      [driveId, studentId]
+    );
+    return { score, total, percentage, submitted_at: row.submitted_at };
+  }, studentId); // the student submitting the test is the actor for the status flip
 }
 
 module.exports = { withTransaction, replaceQuestionSet, recordTestResult };

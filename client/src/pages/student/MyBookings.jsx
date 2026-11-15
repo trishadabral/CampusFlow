@@ -14,21 +14,42 @@ export default function MyBookings() {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState([]);
 
-  useEffect(() => {
+  const load = () => {
     bookingsApi.mine()
       .then(({ data }) => {
-        const now = Date.now();
         setItems((data ?? []).sort((a, b) => new Date(a.slot.starts_at) - new Date(b.slot.starts_at)));
       })
       .catch((err) => toast(errMsg(err, 'Could not load your schedule.'), 'error'))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const cancelBooking = async (b, leavingLine) => {
+    try {
+      const { data } = await bookingsApi.cancel(b.id);
+      setItems((prev) => prev.filter((x) => x.id !== b.id));
+      toast(
+        leavingLine
+          ? "You've left the waiting list."
+          : data?.promoted
+            ? 'Booking cancelled. The next student on the waiting list has been booked in.'
+            : 'Booking cancelled.',
+        'success'
+      );
+    } catch (err) {
+      toast(errMsg(err, 'Could not cancel this booking.'), 'error');
+    }
+  };
+
   if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading your schedule…</div>;
 
-  const upcoming = items.filter((b) => new Date(b.slot.starts_at).getTime() >= Date.now());
-  const past = items.filter((b) => new Date(b.slot.starts_at).getTime() < Date.now());
+  const waiting = items.filter((b) => b.status === 'waitlist');
+  const upcoming = items.filter((b) => b.status === 'confirmed' && new Date(b.slot.starts_at).getTime() >= Date.now());
+  const past = items.filter((b) => b.status !== 'waitlist' && new Date(b.slot.starts_at).getTime() < Date.now());
 
   const card = (b, i) => (
     <div key={b.id} className={`cf-card cf-rise cf-rise-${i % 3} !p-5 flex items-center gap-4`}>
@@ -38,13 +59,33 @@ export default function MyBookings() {
       <div className="min-w-0 flex-1">
         <div className="font-bold text-slate-900 truncate">{b.slot.title}</div>
         <div className="text-sm text-slate-500">{formatDate(b.slot.starts_at)} → {formatDate(b.slot.ends_at)}</div>
+        {b.status === 'waitlist' && (
+          <div className="text-sm text-amber-700 mt-1">
+            You're #{b.waitlist_position ?? '—'} in line for this session — we'll let you know if a seat opens up.
+          </div>
+        )}
       </div>
       <div className="text-right shrink-0">
-        <Badge variant={b.slot.type === 'test' ? 'info' : 'success'}>{b.slot.type}</Badge>
-        {b.slot.type === 'test' && new Date(b.slot.starts_at).getTime() >= Date.now() && (
-          <Link to={`/student/tests/${b.slot.drive_id}`} className="block text-xs font-bold text-indigo-600 hover:text-indigo-800 mt-1.5">
-            Take test →
-          </Link>
+        <Badge variant={b.status === 'waitlist' ? 'warning' : b.slot.type === 'test' ? 'info' : 'success'}>
+          {b.status === 'waitlist' ? 'Waiting list' : b.slot.type}
+        </Badge>
+        {b.status === 'waitlist' ? (
+          <button onClick={() => cancelBooking(b, true)} className="block text-xs font-bold text-rose-600 hover:text-rose-800 mt-1.5">
+            Leave the line
+          </button>
+        ) : (
+          <>
+            {b.slot.type === 'test' && new Date(b.slot.starts_at).getTime() >= Date.now() && (
+              <Link to={`/student/tests/${b.slot.drive_id}`} className="block text-xs font-bold text-indigo-600 hover:text-indigo-800 mt-1.5">
+                Take test →
+              </Link>
+            )}
+            {new Date(b.slot.starts_at).getTime() >= Date.now() && (
+              <button onClick={() => cancelBooking(b, false)} className="block text-xs font-bold text-rose-600 hover:text-rose-800 mt-1.5">
+                Cancel booking
+              </button>
+            )}
+          </>
         )}
       </div>
     </div>
@@ -52,6 +93,13 @@ export default function MyBookings() {
 
   return (
     <div className="space-y-6 max-w-3xl">
+      {waiting.length > 0 && (
+        <div>
+          <h2 className="cf-section-title text-lg">Waiting list</h2>
+          <p className="cf-section-sub">Sessions that were full when you joined. If a seat opens up, you're booked in automatically.</p>
+          <div className="space-y-3 mt-3">{waiting.map(card)}</div>
+        </div>
+      )}
       <div>
         <h2 className="cf-section-title text-lg">Upcoming</h2>
         <p className="cf-section-sub">Sessions the system scheduled for you. Just show up.</p>

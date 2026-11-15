@@ -27,7 +27,10 @@ export default api;
 // --- Auth (M1) ---
 export const auth = {
   login: (email, password) => api.post('/auth/login', { email, password }),
+  register: (data) => api.post('/auth/register', data),
   me: () => api.get('/auth/me'),
+  forgotPassword: (email) => api.post('/auth/forgot-password', { email }),
+  resetPassword: (token, password) => api.post('/auth/reset-password', { token, password }),
 };
 
 // --- Drives & eligibility (M2) ---
@@ -37,15 +40,26 @@ export const drives = {
   create: (data) => api.post('/drives', data),
   applications: (id) => api.get(`/drives/${id}/applications`),
   apply: (id) => api.post(`/drives/${id}/apply`),
-  eligibleStudents: (id) => api.get(`/drives/${id}/eligible-students`),
   previewEligibility: (criteria) => api.post('/drives/preview-eligibility', criteria),
   pipeline: (id) => api.get(`/drives/${id}/pipeline`),
   scheduleTests: (id) => api.post(`/drives/${id}/schedule-tests`),
   publishResults: (id) => api.post(`/drives/${id}/publish-results`),
   markSelected: (id, student_id) => api.post(`/drives/${id}/select`, { student_id }),
+  // Interview notes (Phase 2, M2)
+  feedback: (id) => api.get(`/drives/${id}/feedback`),
+  saveFeedback: (id, data) => api.post(`/drives/${id}/feedback`, data),
+  // Interview-note reminders (Wave 5)
+  feedbackPending: (id) => api.get(`/drives/${id}/feedback/pending`),
+  remindFeedback: (id) => api.post(`/drives/${id}/feedback/remind`),
+  // Rounds (Phase 2, M2)
+  rounds: (id) => api.get(`/drives/${id}/rounds`),
+  addRound: (id, data) => api.post(`/drives/${id}/rounds`, data),
+  setRoundStatus: (id, roundId, status) => api.patch(`/drives/${id}/rounds/${roundId}`, { status }),
+  // Offer letters (Phase 2, M2)
+  offers: (id) => api.get(`/drives/${id}/offers`),
+  generateOffers: (id, data) => api.post(`/drives/${id}/offers/generate`, data),
   // Test questions (recruiter)
   saveQuestions: (id, questions) => api.post(`/drives/${id}/questions`, { questions }),
-  getQuestions: (id) => api.get(`/drives/${id}/questions`),
   // Test taking (student)
   getTest: (id) => api.get(`/drives/${id}/test`),
   submitTest: (id, answers) => api.post(`/drives/${id}/test/submit`, { answers }),
@@ -54,6 +68,9 @@ export const drives = {
 // --- Student journey ---
 export const student = {
   journey: () => api.get('/student/journey'),
+  profile: () => api.get('/student/profile'),
+  updateProfile: (data) => api.put('/student/profile', data),
+  resume: () => api.get('/student/profile/resume', { responseType: 'blob' }),
 };
 
 // --- Notifications ---
@@ -85,6 +102,12 @@ export const bookings = {
 export const resources = {
   list: () => api.get('/resources'),
   create: (data) => api.post('/resources', data),
+  calendar: (from, to) => api.get('/resources/calendar', { params: { from, to } }),
+};
+export const manualEvents = {
+  create: (data) => api.post('/resources/manual-events', data),
+  update: (id, data) => api.patch(`/resources/manual-events/${id}`, data),
+  remove: (id) => api.delete(`/resources/manual-events/${id}`),
 };
 export const allocations = {
   list: () => api.get('/allocations'),
@@ -99,17 +122,43 @@ export const schedule = {
   clearAuto: (driveId) => api.delete(`/schedule/auto/${driveId}`),
 };
 
+// --- Lab agent (Phase 2, M3) ---
+export const labAgent = {
+  status: () => api.get('/lab-agent/status'),
+};
+
+// --- Audit log viewer (Phase 2, M3) ---
+export const audit = {
+  search: (params) => api.get('/admin/audit', { params }),
+  summary: (days = 7) => api.get('/admin/audit/summary', { params: { days } }),
+  history: (entity, entityId) => api.get(`/admin/audit/${entity}/${entityId}`),
+};
+
 // --- Kernel monitor (M3) ---
 export const monitor = {
   locks: (limit = 50) => api.get('/monitor/locks', { params: { limit } }),
   stats: () => api.get('/monitor/stats'),
   activity: (limit = 50) => api.get('/monitor/activity', { params: { limit } }),
   stress: (slot_id, count) => api.post('/monitor/stress', { slot_id, count }),
+  deadlockDemo: () => api.post('/monitor/deadlock-demo'),
 };
 
 // --- Reports (M4) ---
 export const reports = {
   placement: () => api.get('/reports/placement'),
+  driveAnalytics: (driveId) => api.get(`/reports/drives/${driveId}/analytics`),
+  // CSV downloads (Phase 2, M4) — blob responses, saved by the page.
+  exportPlacementCsv: () => api.get('/reports/export.csv', { responseType: 'blob' }),
+  exportDriveCsv: (driveId) => api.get(`/reports/drives/${driveId}/export.csv`, { responseType: 'blob' }),
+  exportRosterCsv: (driveId) => api.get(`/reports/drives/${driveId}/roster.csv`, { responseType: 'blob' }),
+  placementStats: () => api.get('/reports/placement-stats'),
+};
+
+// --- Offer letters (Phase 2, M2) ---
+export const offers = {
+  get: (id) => api.get(`/offers/${id}`),
+  // Student answers their own offer (Wave 5): 'accepted' or 'declined'.
+  respond: (id, decision) => api.post(`/offers/${id}/respond`, { decision }),
 };
 
 // --- Companies (M2, used by the drive wizard) ---

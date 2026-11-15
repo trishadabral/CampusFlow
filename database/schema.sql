@@ -16,6 +16,8 @@ CREATE TABLE users (
   name          VARCHAR(100) NOT NULL,
   email         VARCHAR(150) NOT NULL UNIQUE,
   password_hash VARCHAR(255) NOT NULL,
+  reset_token VARCHAR(100) NULL,               -- password-reset token (Phase 2)
+  reset_token_expires DATETIME NULL,           -- token expiry; NULL = no reset pending
   role          ENUM('student','recruiter','admin') NOT NULL,
   created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -28,6 +30,10 @@ CREATE TABLE students (
   cgpa            DECIMAL(4,2) NOT NULL CHECK (cgpa BETWEEN 0 AND 10),
   backlogs        INT NOT NULL DEFAULT 0 CHECK (backlogs >= 0),
   graduation_year INT NOT NULL,
+  photo_data MEDIUMTEXT NULL,                  -- base64 profile photo (no file storage)
+  skills TEXT NULL,                            -- free-text skills, comma-separated
+  resume_filename VARCHAR(255) NULL,           -- original uploaded file name
+  resume_data MEDIUMTEXT NULL,                 -- base64 PDF resume (no file storage)
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   INDEX idx_students_branch_cgpa (branch, cgpa)
 );
@@ -61,12 +67,28 @@ CREATE TABLE drives (
   num_interviewers     INT NOT NULL DEFAULT 2,
   min_test_score       DECIMAL(5,2) NOT NULL DEFAULT 50.00,  -- % needed to qualify
   max_shortlist        INT NOT NULL DEFAULT 20,              -- cap on interview shortlist
+  package_lpa          DECIMAL(6,2) NULL,                  -- advertised package for the drive (LPA)
   status               ENUM('draft','open','testing','interviews','closed') NOT NULL DEFAULT 'open',
   created_by           INT NOT NULL,
   created_at           TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (company_id) REFERENCES companies(id),
   FOREIGN KEY (created_by) REFERENCES users(id),
   INDEX idx_drives_status_deadline (status, application_deadline)
+);
+
+-- ---------------------------------------------------------- drive_rounds --
+-- Multi-round drives: each round has its own cutoff score and status.
+CREATE TABLE drive_rounds (
+  id         INT AUTO_INCREMENT PRIMARY KEY,
+  drive_id   INT NOT NULL,
+  round_no   INT NOT NULL,
+  name       VARCHAR(100) NOT NULL,
+  cutoff     DECIMAL(5,2) NOT NULL DEFAULT 50.00,
+  status     ENUM('pending','active','done') NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_round (drive_id, round_no),
+  FOREIGN KEY (drive_id) REFERENCES drives(id) ON DELETE CASCADE,
+  INDEX idx_rounds_drive (drive_id)
 );
 
 -- --------------------------------------------------------- applications --
@@ -92,6 +114,20 @@ CREATE TABLE resources (
   location VARCHAR(120),
   status   ENUM('available','maintenance') NOT NULL DEFAULT 'available',
   INDEX idx_resources_type (type, status)
+);
+
+-- ---------------------------------------------------------- lab_machines --
+-- Live status of individual machines inside a lab resource, as reported
+-- by the lab agent (see the C++ lab agent in Phase 2).
+CREATE TABLE lab_machines (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  resource_id  INT NULL,
+  machine_name VARCHAR(100) NOT NULL,
+  status       ENUM('up','free','busy','down') NOT NULL DEFAULT 'up',
+  last_seen    TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  reported_by  VARCHAR(100) NULL,
+  UNIQUE KEY uq_machine (resource_id, machine_name),
+  FOREIGN KEY (resource_id) REFERENCES resources(id) ON DELETE SET NULL
 );
 
 -- ---------------------------------------------------------------- slots --
@@ -150,6 +186,23 @@ CREATE TABLE allocations (
   INDEX idx_allocations_resource_time (resource_id, starts_at, ends_at)
 );
 
+-- ---------------------------------------------------------- manual_events --
+-- Hand-added bookings on the resource calendar (e.g. a lab reserved for
+-- a workshop). They sit alongside system-generated slots/allocations.
+CREATE TABLE manual_events (
+  id          INT AUTO_INCREMENT PRIMARY KEY,
+  resource_id INT NOT NULL,
+  title       VARCHAR(200) NOT NULL,
+  starts_at   DATETIME NOT NULL,
+  ends_at     DATETIME NOT NULL,
+  created_by  INT NULL,
+  created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CHECK (ends_at > starts_at),
+  FOREIGN KEY (resource_id) REFERENCES resources(id) ON DELETE CASCADE,
+  FOREIGN KEY (created_by)  REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_events_resource (resource_id, starts_at, ends_at)
+);
+
 -- ------------------------------------------------------- test_questions --
 -- Recruiter-uploaded MCQs for a drive's aptitude test.
 CREATE TABLE test_questions (
@@ -179,6 +232,41 @@ CREATE TABLE test_results (
   FOREIGN KEY (drive_id)   REFERENCES drives(id)   ON DELETE CASCADE,
   FOREIGN KEY (student_id) REFERENCES students(user_id) ON DELETE CASCADE,
   INDEX idx_tr_drive (drive_id, percentage)
+);
+
+-- ----------------------------------------------------- interview_feedback --
+-- One feedback row per interviewer per student per drive.
+CREATE TABLE interview_feedback (
+  id             INT AUTO_INCREMENT PRIMARY KEY,
+  drive_id       INT NOT NULL,
+  student_id     INT NOT NULL,                      -- FK -> students.user_id
+  interviewer_id INT NOT NULL,
+  round_id       INT NULL,
+  score          DECIMAL(5,2) NOT NULL,
+  remarks        TEXT NULL,
+  created_at     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE KEY uq_feedback (drive_id, student_id, interviewer_id),
+  FOREIGN KEY (drive_id)       REFERENCES drives(id) ON DELETE CASCADE,
+  FOREIGN KEY (student_id)     REFERENCES students(user_id) ON DELETE CASCADE,
+  FOREIGN KEY (interviewer_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (round_id)       REFERENCES drive_rounds(id) ON DELETE SET NULL
+);
+
+-- --------------------------------------------------------- offer_letters --
+-- One generated offer letter per selected student per drive.
+CREATE TABLE offer_letters (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  drive_id     INT NOT NULL,
+  student_id   INT NOT NULL,                        -- FK -> students.user_id
+  package_lpa  DECIMAL(6,2) NULL,
+  joining_date DATE NULL,
+  letter_text  TEXT NULL,
+  generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  status       ENUM('pending', 'accepted', 'declined') NOT NULL DEFAULT 'pending',
+  responded_at TIMESTAMP NULL,
+  UNIQUE KEY uq_offer (drive_id, student_id),
+  FOREIGN KEY (drive_id)   REFERENCES drives(id) ON DELETE CASCADE,
+  FOREIGN KEY (student_id) REFERENCES students(user_id) ON DELETE CASCADE
 );
 
 -- -------------------------------------------------------- notifications --
@@ -227,33 +315,38 @@ CREATE TABLE lock_events (
 -- ============================================================ TRIGGERS ==
 DELIMITER $$
 
+-- Who acted is carried in the session variable @actor_id, set by the app
+-- on the same connection that performs the write (see server/src/dbms/db.js
+-- withActor/setActor). The scalar subquery validates it: an unset variable,
+-- or an id that is not a user, records NULL ("System") instead of failing
+-- the write on the audit_log.actor_id foreign key.
 CREATE TRIGGER trg_bookings_audit_ai AFTER INSERT ON bookings FOR EACH ROW BEGIN
-  INSERT INTO audit_log (action, entity, entity_id, details)
-  VALUES ('INSERT', 'booking', NEW.id,
+  INSERT INTO audit_log (actor_id, action, entity, entity_id, details)
+  VALUES ((SELECT id FROM users WHERE id = @actor_id), 'INSERT', 'booking', NEW.id,
           JSON_OBJECT('slot_id', NEW.slot_id, 'student_id', NEW.student_id, 'status', NEW.status));
 END$$
 
 CREATE TRIGGER trg_bookings_audit_au AFTER UPDATE ON bookings FOR EACH ROW BEGIN
-  INSERT INTO audit_log (action, entity, entity_id, details)
-  VALUES ('UPDATE', 'booking', NEW.id,
+  INSERT INTO audit_log (actor_id, action, entity, entity_id, details)
+  VALUES ((SELECT id FROM users WHERE id = @actor_id), 'UPDATE', 'booking', NEW.id,
           JSON_OBJECT('old_status', OLD.status, 'new_status', NEW.status));
 END$$
 
 CREATE TRIGGER trg_bookings_audit_ad AFTER DELETE ON bookings FOR EACH ROW BEGIN
-  INSERT INTO audit_log (action, entity, entity_id, details)
-  VALUES ('DELETE', 'booking', OLD.id,
+  INSERT INTO audit_log (actor_id, action, entity, entity_id, details)
+  VALUES ((SELECT id FROM users WHERE id = @actor_id), 'DELETE', 'booking', OLD.id,
           JSON_OBJECT('slot_id', OLD.slot_id, 'student_id', OLD.student_id));
 END$$
 
 CREATE TRIGGER trg_applications_audit_au AFTER UPDATE ON applications FOR EACH ROW BEGIN
-  INSERT INTO audit_log (action, entity, entity_id, details)
-  VALUES ('UPDATE', 'application', NEW.id,
+  INSERT INTO audit_log (actor_id, action, entity, entity_id, details)
+  VALUES ((SELECT id FROM users WHERE id = @actor_id), 'UPDATE', 'application', NEW.id,
           JSON_OBJECT('old_status', OLD.status, 'new_status', NEW.status, 'drive_id', NEW.drive_id));
 END$$
 
 CREATE TRIGGER trg_allocations_audit_ai AFTER INSERT ON allocations FOR EACH ROW BEGIN
-  INSERT INTO audit_log (action, entity, entity_id, details)
-  VALUES ('INSERT', 'allocation', NEW.id,
+  INSERT INTO audit_log (actor_id, action, entity, entity_id, details)
+  VALUES ((SELECT id FROM users WHERE id = @actor_id), 'INSERT', 'allocation', NEW.id,
           JSON_OBJECT('resource_id', NEW.resource_id, 'purpose', NEW.purpose,
                       'seats_needed', NEW.seats_needed));
 END$$

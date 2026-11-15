@@ -80,6 +80,20 @@ async function pendingMigrations() {
   return discoverMigrations().filter((f) => !applied.has(f));
 }
 
+// MySQL has no "ADD COLUMN IF NOT EXISTS", so an ALTER TABLE that re-adds
+// an existing column / index / constraint fails. A migration file re-run
+// against a database that already has the object is therefore NOT an error:
+// these errnos all mean "already there", so the statement is skipped and the
+// run continues. Anything else still aborts the run (and the file is NOT
+// recorded as applied, so it is safe to fix and re-run).
+const ALREADY_EXISTS_ERRNOS = new Set([
+  1050, // ER_TABLE_EXISTS_ERROR — CREATE TABLE on an existing table
+  1060, // ER_DUP_FIELDNAME — ADD COLUMN for a column that exists
+  1061, // ER_DUP_KEYNAME — ADD INDEX for an index that exists
+  1068, // ER_MULTIPLE_PRI_KEY — ADD PRIMARY KEY when one exists
+  1826, // ER_DUP_FK_NAME — ADD CONSTRAINT for a FK name that exists
+]);
+
 // Apply every pending migration. Returns the list of versions applied.
 async function migrate() {
   const pending = await pendingMigrations();
@@ -88,7 +102,15 @@ async function migrate() {
     const sql = fs.readFileSync(path.join(MIGRATIONS_DIR, file), 'utf8');
     for (const stmt of splitStatements(sql)) {
       if (isCommentOnly(stmt)) continue;
-      await pool.query(stmt);
+      try {
+        await pool.query(stmt);
+      } catch (err) {
+        if (ALREADY_EXISTS_ERRNOS.has(err.errno)) {
+          console.log(`  (${file}: already applied, skipped — ${err.message})`);
+          continue;
+        }
+        throw err;
+      }
     }
     await pool.query('INSERT INTO schema_migrations (version) VALUES (?)', [file]);
     appliedNow.push(file);

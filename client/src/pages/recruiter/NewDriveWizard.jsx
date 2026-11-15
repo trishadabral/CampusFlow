@@ -12,6 +12,7 @@ import { drives as drivesApi, companies as companiesApi, errMsg } from '../../ap
 import { useToast } from '../../components/Toast.jsx';
 import Stepper from '../../components/Stepper.jsx';
 import Badge from '../../components/Badge.jsx';
+import Spinner from '../../components/Spinner.jsx';
 
 const BRANCHES = ['CSE', 'IT', 'ECE', 'ME', 'CE', 'EE'];
 
@@ -32,6 +33,8 @@ export default function NewDriveWizard() {
   const [step, setStep] = useState(0);
   const [publishing, setPublishing] = useState(false);
   const [companies, setCompanies] = useState([]);
+  const [companiesLoading, setCompaniesLoading] = useState(true);
+  const [companiesError, setCompaniesError] = useState(null);
   const [showNewCompany, setShowNewCompany] = useState(false);
   const [newCompany, setNewCompany] = useState({ name: '', website: '', sector: '' });
 
@@ -39,7 +42,7 @@ export default function NewDriveWizard() {
     company_id: '', title: '', description: '',
     min_cgpa: '7.0', allowed_branches: ['CSE', 'IT'], max_backlogs: '0',
     graduation_year: '2027', application_deadline: '',
-    test_date: '', interview_date: '',
+    test_date: '', interview_date: '', package_lpa: '',
   });
   const [questions, setQuestions] = useState([emptyQuestion()]);
   const [interview, setInterview] = useState({
@@ -48,15 +51,23 @@ export default function NewDriveWizard() {
   });
   const [preview, setPreview] = useState(null);
 
-  useEffect(() => {
-    companiesApi.list().then(({ data }) => {
+  const loadCompanies = async () => {
+    setCompaniesLoading(true);
+    setCompaniesError(null);
+    try {
+      const { data } = await companiesApi.list();
       setCompanies(data ?? []);
       if ((data ?? []).length && !form.company_id) {
         setForm((f) => ({ ...f, company_id: String(data[0].id) }));
       }
-    }).catch(() => {});
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    } catch (err) {
+      setCompaniesError(errMsg(err, 'Could not load companies. Check your connection and try again.'));
+    } finally {
+      setCompaniesLoading(false);
+    }
+  };
+
+  useEffect(() => { loadCompanies(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
   const setI = (k, v) => setInterview((f) => ({ ...f, [k]: v }));
@@ -156,6 +167,7 @@ export default function NewDriveWizard() {
         num_interviewers: Number(interview.num_interviewers),
         min_test_score: Number(interview.min_test_score),
         max_shortlist: Number(interview.max_shortlist),
+        package_lpa: form.package_lpa === '' ? null : Number(form.package_lpa),
       });
       const driveId = data.drive.id;
       await drivesApi.saveQuestions(driveId, questions.map((q) => ({
@@ -195,9 +207,18 @@ export default function NewDriveWizard() {
             <div>
               <label className="cf-label">Company</label>
               <div className="flex gap-2">
-                <select value={form.company_id} onChange={(e) => set('company_id', e.target.value)} className="cf-input">
-                  {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
+                {companiesLoading ? (
+                  <div className="flex-1 border border-slate-200 rounded-xl px-3 py-2"><Spinner text="Loading companies…" /></div>
+                ) : companiesError ? (
+                  <div className="flex-1 bg-rose-50 border border-rose-200 text-rose-800 text-sm rounded-xl px-4 py-2.5">
+                    {companiesError}{' '}
+                    <button type="button" onClick={loadCompanies} className="font-semibold underline">Try again</button>
+                  </div>
+                ) : (
+                  <select value={form.company_id} onChange={(e) => set('company_id', e.target.value)} className="cf-input">
+                    {companies.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </select>
+                )}
                 <button type="button" onClick={() => setShowNewCompany((v) => !v)} className="cf-btn-secondary whitespace-nowrap">+ New</button>
               </div>
               {showNewCompany && (
@@ -219,6 +240,11 @@ export default function NewDriveWizard() {
           <div>
             <label className="cf-label">Description</label>
             <textarea value={form.description} onChange={(e) => set('description', e.target.value)} rows={3} placeholder="Role, skills, CTC, location…" className="cf-input" />
+          </div>
+          <div>
+            <label className="cf-label">Package (LPA) <span className="font-normal text-slate-400">(optional)</span></label>
+            <input type="number" min="0" step="0.1" value={form.package_lpa} onChange={(e) => set('package_lpa', e.target.value)} placeholder="e.g. 8.5" className="cf-input" />
+            <p className="cf-hint">Shown on offer letters by default — you can still change it when generating them.</p>
           </div>
           <div>
             <label className="cf-label">Eligible branches</label>
@@ -362,7 +388,7 @@ export default function NewDriveWizard() {
             <div className="bg-slate-50 rounded-xl p-4">
               <div className="text-xs uppercase tracking-wide text-slate-400 font-semibold mb-1">Drive</div>
               <div className="font-bold text-slate-900">{form.title || '—'}</div>
-              <div className="text-slate-500">{companies.find((c) => String(c.id) === form.company_id)?.name}</div>
+              <div className="text-slate-500">{companies.find((c) => String(c.id) === form.company_id)?.name}{form.package_lpa !== '' && ` · ₹${form.package_lpa} LPA`}</div>
             </div>
             <div className="bg-slate-50 rounded-xl p-4">
               <div className="text-xs uppercase tracking-wide text-slate-400 font-semibold mb-1">Eligibility</div>

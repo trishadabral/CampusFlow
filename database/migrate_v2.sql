@@ -39,7 +39,7 @@ ALTER TABLE slots
 
 -- ------------------------------------------------------- test_questions --
 -- Recruiter-uploaded MCQs for a drive's aptitude test.
-CREATE TABLE test_questions (
+CREATE TABLE IF NOT EXISTS test_questions (
   id            INT AUTO_INCREMENT PRIMARY KEY,
   drive_id      INT NOT NULL,
   question_text TEXT NOT NULL,
@@ -53,7 +53,7 @@ CREATE TABLE test_questions (
 
 -- --------------------------------------------------------- test_results --
 -- One row per student per drive: the auto-graded outcome.
-CREATE TABLE test_results (
+CREATE TABLE IF NOT EXISTS test_results (
   id          INT AUTO_INCREMENT PRIMARY KEY,
   drive_id    INT NOT NULL,
   student_id  INT NOT NULL,                    -- FK -> students.user_id
@@ -71,7 +71,7 @@ CREATE TABLE test_results (
 -- -------------------------------------------------------- notifications --
 -- In-app inbox: the system tells students about test sessions, results,
 -- and interview schedules. Links are client routes (e.g. /student/tests/3).
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
   id         INT AUTO_INCREMENT PRIMARY KEY,
   user_id    INT NOT NULL,
   title      VARCHAR(200) NOT NULL,

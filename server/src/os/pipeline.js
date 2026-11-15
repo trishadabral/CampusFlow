@@ -6,9 +6,12 @@
 // is unchanged. Only the *caller* changed: the scheduler instead of the student.
 
 const pool = require('../dbms/db');
+const { setActor, clearActor } = require('../dbms/db');
 const { bookSeat } = require('./critical-section');
 const { findEligibleStudents } = require('../dbms/eligibility');
 const { recordTestResult } = require('../dbms/transactions');
+const { notifyUser } = require('../mailer');
+const { publish } = require('../realtime');
 
 function httpError(status, message) {
   const err = new Error(message);
@@ -49,11 +52,36 @@ function fmtWhen(startsAt) {
   return `${d.getDate()} ${months[d.getMonth()]}, ${h}:${pad(d.getMinutes())} ${ap}`;
 }
 
-async function notify(conn, userId, title, body, link) {
-  await conn.query(
-    'INSERT INTO notifications (user_id, title, body, link) VALUES (?, ?, ?, ?)',
-    [userId, title, body, link || null]
-  );
+// Save the in-app notification AND try to email the same message
+// (mailer.js notifyUser). The bell item is always saved first; email is
+// best-effort — if SMTP is not set up, or sending fails, the student still
+// gets the notification in-app and this call never throws. `db` is a pool
+// or a pooled connection — either has the .query() notifyUser expects.
+async function notify(db, userId, title, body, link) {
+  const appUrl = (process.env.APP_URL || 'http://localhost:5173').replace(/\/$/, '');
+  await notifyUser(db, {
+    userId,
+    title,
+    body,
+    link,
+    emailSubject: title,
+    emailText: link ? `${body}\n\nSee more: ${appUrl}${link}` : body,
+  });
+}
+
+// Send notifications queued during scheduling, AFTER the DB work is done
+// and the pooled connection released. Same pattern as routes/bookings.js:
+// notify after commit, wrapped in try/catch. One student's failure (mail
+// down, bad row) is logged and skipped — it never fails the scheduling
+// that already happened, and never holds the connection while sending.
+async function sendPending(pending, where) {
+  for (const n of pending) {
+    try {
+      await notify(pool, n.userId, n.title, n.body, n.link);
+    } catch (err) {
+      console.error(`[pipeline:${where}] notification to user ${n.userId} failed:`, err.message);
+    }
+  }
 }
 
 async function getDrive(conn, driveId) {
@@ -73,6 +101,8 @@ async function getApplicants(conn, driveId) {
   return rows;
 }
 
+const { freeMachineCounts } = require('./lab-status');
+
 // ---------------------------------------------------------------------------
 // scheduleTestSessions(driveId, actorId)
 // Batches every applicant into lab sessions (biggest lab first, back-to-back
@@ -82,6 +112,11 @@ async function getApplicants(conn, driveId) {
 // ---------------------------------------------------------------------------
 async function scheduleTestSessions(driveId, actorId) {
   const conn = await pool.getConnection();
+  // Notifications are only QUEUED while the connection is held (below)
+  // and sent after it is released — a throwing notify used to abort
+  // mid-loop, leaving slots created but the drive never flipped.
+  const pending = [];
+  let result;
   try {
     const drive = await getDrive(conn, driveId);
     if (!drive) throw httpError(404, 'Drive not found.');
@@ -103,6 +138,25 @@ async function scheduleTestSessions(driveId, actorId) {
     const [labs] = await conn.query(
       "SELECT * FROM resources WHERE type = 'lab' AND status = 'available' ORDER BY capacity DESC"
     );
+
+    // Lab-agent preference (Phase 2, M3): when the C++ lab agent has
+    // reported recently, labs with more free machines go first — a lab
+    // whose machines are actually up beats a bigger lab whose machines
+    // are busy or silent. Capacity stays the tiebreak. When the agent
+    // has never run, or its data cannot be read, the order above
+    // (capacity only) is untouched, so scheduling behaves exactly as before.
+    try {
+      const freeCounts = await freeMachineCounts(conn);
+      const hasAgentData = Object.values(freeCounts).some((n) => n > 0);
+      if (hasAgentData) {
+        labs.sort(
+          (a, b) =>
+            (freeCounts[b.id] || 0) - (freeCounts[a.id] || 0) || b.capacity - a.capacity
+        );
+      }
+    } catch (_) {
+      // Lab status is a preference, never a requirement — schedule anyway.
+    }
 
     const day = toDay(drive.test_date);
     const durMin = drive.test_duration_min || 60;
@@ -155,7 +209,7 @@ async function scheduleTestSessions(driveId, actorId) {
       }
     }
 
-    // --- create slots + serialized seat assignments + notifications ---
+    // --- create slots + serialized seat assignments (notifications queued) ---
     let assigned = 0;
     for (const s of sessions) {
       const venue = s.lab ? s.lab.name : null;
@@ -167,23 +221,35 @@ async function scheduleTestSessions(driveId, actorId) {
       );
       const slotId = res.insertId;
       for (const st of s.students) {
-        await bookSeat(slotId, st.student_id, holder);
+        await bookSeat(slotId, st.student_id, holder, { actorId });
         assigned += 1;
-        await notify(
-          conn,
-          st.student_id,
-          `Test scheduled: ${drive.title}`,
-          `${s.title}${venue ? ` · ${venue}` : ''} · ${fmtWhen(s.startsAt)}. Reach 15 minutes early with your ID card.`,
-          `/student/drives/${driveId}`
-        );
+        pending.push({
+          userId: st.student_id,
+          title: `Test scheduled: ${drive.title}`,
+          body: `${s.title}${venue ? ` · ${venue}` : ''} · ${fmtWhen(s.startsAt)}. Reach 15 minutes early with your ID card.`,
+          link: `/student/drives/${driveId}`,
+        });
       }
     }
 
     await conn.query("UPDATE drives SET status = 'testing' WHERE id = ?", [driveId]);
-    return { sessions: sessions.length, assigned };
+    // Live update: browsers refresh the moment sessions exist (the emails
+    // and bell items above are the durable copy; this is just the fast path).
+    publish('test-scheduled', {
+      driveId,
+      driveTitle: drive.title,
+      message: `Test sessions scheduled for ${drive.title}`,
+      sessions: sessions.length,
+      assigned,
+    });
+    result = { sessions: sessions.length, assigned };
   } finally {
     conn.release();
   }
+  // DB work done, connection released — now notify. A failure here
+  // cannot roll anything back (and never throws: see sendPending).
+  await sendPending(pending, 'scheduleTestSessions');
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -197,7 +263,16 @@ async function scheduleTestSessions(driveId, actorId) {
 // ---------------------------------------------------------------------------
 async function publishResults(driveId, actorId) {
   const conn = await pool.getConnection();
+  // Notifications are only QUEUED while the connection is held (below)
+  // and sent after it is released — a throwing notify used to abort
+  // mid-loop, leaving results half-sent and the drive never flipped.
+  const pending = [];
+  let result;
   try {
+    // Audit attribution: the application status flips below fire the audit
+    // triggers on THIS connection, so the recruiter publishing the results
+    // is recorded as the actor.
+    await setActor(conn, actorId);
     const drive = await getDrive(conn, driveId);
     if (!drive) throw httpError(404, 'Drive not found.');
     if (drive.status !== 'testing') {
@@ -212,12 +287,23 @@ async function publishResults(driveId, actorId) {
       [driveId, driveId]
     );
 
+    // Cutoff for this publish: the active round's cutoff when the drive has
+    // rounds (and one is active); otherwise the drive's own qualifying score.
+    // Drives with no rounds never reach the round query's rows, so their
+    // behaviour is exactly as before.
+    let cutoff = Number(drive.min_test_score);
+    const [activeRounds] = await conn.query(
+      "SELECT cutoff FROM drive_rounds WHERE drive_id = ? AND status = 'active' ORDER BY round_no LIMIT 1",
+      [driveId]
+    );
+    if (activeRounds.length) cutoff = Number(activeRounds[0].cutoff);
+
     const [top] = await conn.query(
       `SELECT student_id, percentage FROM test_results
        WHERE drive_id = ? AND percentage >= ?
        ORDER BY percentage DESC, submitted_at ASC
        LIMIT ?`,
-      [driveId, drive.min_test_score, drive.max_shortlist]
+      [driveId, cutoff, drive.max_shortlist]
     );
     const shortIds = top.map((r) => r.student_id);
 
@@ -263,12 +349,12 @@ async function publishResults(driveId, actorId) {
          VALUES (?, ?, 'interview', ?, ?, ?, 1)`,
         [driveId, room ? room.id : null, `Interview · Panel ${panel}`, startsAt, endsAt]
       );
-      await bookSeat(res.insertId, shortIds[i], holder);
+      await bookSeat(res.insertId, shortIds[i], holder, { actorId });
       interviews.push({ student_id: shortIds[i], panel, room: room ? room.name : null, startsAt, endsAt });
       cursor += durMin;
     }
 
-    // --- notifications: results to everyone, schedule to the shortlisted ---
+    // --- notifications queued: results to everyone, schedule to the shortlisted ---
     const [results] = await conn.query(
       `SELECT r.student_id, r.percentage, u.name
        FROM test_results r JOIN users u ON u.id = r.student_id
@@ -280,19 +366,19 @@ async function publishResults(driveId, actorId) {
     for (const r of results) {
       if (shortSet.has(r.student_id)) {
         const iv = interviewByStudent.get(r.student_id);
-        await notify(
-          conn, r.student_id,
-          `Shortlisted: ${drive.title} 🎉`,
-          `You scored ${Number(r.percentage).toFixed(1)}%. Interview: ${fmtWhen(iv.startsAt)} · Panel ${iv.panel}${iv.room ? ` · ${iv.room}` : ''}.`,
-          `/student/drives/${driveId}`
-        );
+        pending.push({
+          userId: r.student_id,
+          title: `Shortlisted: ${drive.title} 🎉`,
+          body: `You scored ${Number(r.percentage).toFixed(1)}%. Interview: ${fmtWhen(iv.startsAt)} · Panel ${iv.panel}${iv.room ? ` · ${iv.room}` : ''}.`,
+          link: `/student/drives/${driveId}`,
+        });
       } else {
-        await notify(
-          conn, r.student_id,
-          `Result: ${drive.title}`,
-          `You scored ${Number(r.percentage).toFixed(1)}% (cutoff ${Number(drive.min_test_score).toFixed(0)}%). You were not shortlisted this time — more drives are coming.`,
-          `/student/drives/${driveId}`
-        );
+        pending.push({
+          userId: r.student_id,
+          title: `Result: ${drive.title}`,
+          body: `You scored ${Number(r.percentage).toFixed(1)}% (cutoff ${Number(cutoff).toFixed(0)}%). You were not shortlisted this time — more drives are coming.`,
+          link: `/student/drives/${driveId}`,
+        });
       }
     }
     // Applicants who never took the test.
@@ -303,19 +389,39 @@ async function publishResults(driveId, actorId) {
       [driveId, driveId]
     );
     for (const n of noShows) {
-      await notify(
-        conn, n.student_id,
-        `Result: ${drive.title}`,
-        `You did not take the test, so your application was not considered. Watch the deadlines on upcoming drives.`,
-        `/student/drives/${driveId}`
-      );
+      pending.push({
+        userId: n.student_id,
+        title: `Result: ${drive.title}`,
+        body: `You did not take the test, so your application was not considered. Watch the deadlines on upcoming drives.`,
+        link: `/student/drives/${driveId}`,
+      });
     }
 
     await conn.query("UPDATE drives SET status = 'interviews' WHERE id = ?", [driveId]);
-    return { shortlisted: shortIds.length, interviews: interviews.length };
+    // Live updates: results first, then the interview timetable (if any).
+    publish('results-published', {
+      driveId,
+      driveTitle: drive.title,
+      message: `Results are out for ${drive.title}`,
+      shortlisted: shortIds.length,
+    });
+    if (interviews.length) {
+      publish('interview-scheduled', {
+        driveId,
+        driveTitle: drive.title,
+        message: `${interviews.length} interview${interviews.length !== 1 ? 's' : ''} scheduled for ${drive.title}`,
+        interviews: interviews.length,
+      });
+    }
+    result = { shortlisted: shortIds.length, interviews: interviews.length };
   } finally {
+    await clearActor(conn);
     conn.release();
   }
+  // DB work done, connection released — now notify. A failure here
+  // cannot roll anything back (and never throws: see sendPending).
+  await sendPending(pending, 'publishResults');
+  return result;
 }
 
 // ---------------------------------------------------------------------------
@@ -345,7 +451,10 @@ async function submitTest(driveId, studentId, answers) {
     total += q.marks;
     if (Number((answers || {})[q.id]) === q.correct_index) score += q.marks;
   }
-  const percentage = total ? Math.round((score / total) * 1000) / 100 : 0;
+  // Percentage is score/total as a 0–100 number, rounded to 2 decimals.
+  // (Was *1000/100, which is 10x too small: a perfect paper scored 10%,
+  // so no student could ever clear a 50/60 cutoff.)
+  const percentage = total ? Math.round((score / total) * 10000) / 100 : 0;
 
   // One transaction (dbms/transactions.js): the result row and the
   // 'test_taken' status flip succeed or fail together.

@@ -31,16 +31,16 @@ Built by a 4-member team for a PBL evaluation (Operating Systems + DBMS).
 - **All drives** — every drive's stage and progress (applied → tested → shortlisted) with one-click next steps
 - **Full schedule** — every test and interview session across all drives, with venues and seat counts
 - **Resources** — add labs (with seating capacity) and interview rooms; the auto-scheduler plans against this inventory. Manual bookings run a safety check that refuses overbooking with an explanation
-- **System Monitor** — live view of locks, waits and transactions as the system works
-- **Scheduling Lab** — CPU scheduling simulator (FCFS / Priority / Round-Robin) with Gantt charts
+- **Live Monitor** — watch bookings happen live, with a rush-hour test proving seats can't be double-booked
+- **Interview Scheduler** — auto-build interview timetables from shortlisted students (highest marks first or application order), with a safety check before booking a lab
 - **Reports** — placement progress per drive and per company
 - **Users** — directory of all accounts
 
 ### ⚙️ The pipeline engine (the core idea)
 Recruiters configure; the system executes. Test sessions are batched into labs, every seat is
 assigned inside a serialized database critical section (`SELECT … FOR UPDATE` — no overselling,
-ever), tests are auto-graded, shortlists are score-based, and interviews are timetabled
-round-robin across panels and rooms. Students are notified at every step.
+ever), tests are auto-graded, shortlists are score-based, and interviews are timetabled,
+rotating across panels and rooms. Students are notified at every step.
 
 ---
 
@@ -79,8 +79,9 @@ One-click demo buttons are on the login page.
 
 | Doc | What it covers |
 |---|---|
-| [docs/01_TEAM_CONTRIBUTIONS.md](docs/01_TEAM_CONTRIBUTIONS.md) | What each team member built (Phase 1) |
+| [docs/01_TEAM_CONTRIBUTIONS.md](docs/01_TEAM_CONTRIBUTIONS.md) | What each team member built (Phase 1 + Phase 2) |
 | [docs/02_PHASE2_PLAN.md](docs/02_PHASE2_PLAN.md) | Features planned for the next evaluation, with owners |
+| [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | How to demo every Phase 2 feature end to end for the final evaluation |
 | [docs/03_INSTALLATION.md](docs/03_INSTALLATION.md) | How to install and run the app on your machine |
 
 Older working documents are preserved in `docs/archive/`.

@@ -31,6 +31,14 @@ export function AuthProvider({ children }) {
     return data.user;
   };
 
+  const register = async (fields) => {
+    const { data } = await authApi.register(fields);
+    localStorage.setItem('campusflow_token', data.token);
+    localStorage.setItem('campusflow_user', JSON.stringify(data.user));
+    setUser(data.user);
+    return data.user;
+  };
+
   const logout = () => {
     localStorage.removeItem('campusflow_token');
     localStorage.removeItem('campusflow_user');
@@ -38,7 +46,7 @@ export function AuthProvider({ children }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, ready }}>
+    <AuthContext.Provider value={{ user, login, register, logout, ready }}>
       {children}
     </AuthContext.Provider>
   );
