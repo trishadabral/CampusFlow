@@ -51,14 +51,14 @@ export default function Login() {
       <div className="hidden lg:flex w-[45%] bg-slate-900 text-white flex-col justify-between p-12">
         <div className="flex items-center gap-3">
           <svg className="w-10 h-10" viewBox="0 0 40 40" fill="none">
-            <path d="M20 3 L34 11 V29 L20 37 L6 29 V11 Z" fill="#4f46e5" />
+            <path d="M20 3 L34 11 V29 L20 37 L6 29 V11 Z" fill="#FF5C38" />
             <path d="M13 16.5h10m0 0l-3-3m3 3l-3 3" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-            <path d="M13 23.5h10m0 0l-3-3m3 3l-3 3" stroke="#a5b4fc" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M13 23.5h10m0 0l-3-3m3 3l-3 3" stroke="#67E8F9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
           </svg>
-          <div className="text-xl font-bold">CampusFlow OS</div>
+          <div className="font-display font-bold text-[22px] leading-[0.95] tracking-wide text-white">CAMPUS<br />FLOW</div>
         </div>
         <div>
-          <h2 className="text-3xl font-bold leading-tight mb-8">
+          <h2 className="font-display text-3xl font-bold leading-tight mb-8">
             The operating system<br />for campus placements.
           </h2>
           <ul className="space-y-5">
@@ -68,8 +68,8 @@ export default function Login() {
               ['Watch it work live', 'A live dashboard shows every booking, queue and change as it happens.'],
             ].map(([t, d]) => (
               <li key={t} className="flex gap-4">
-                <span className="mt-1 w-6 h-6 rounded-full bg-indigo-600/30 flex items-center justify-center shrink-0">
-                  <svg className="w-3.5 h-3.5 text-indigo-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <span className="mt-1 w-6 h-6 rounded-full bg-[#FF5C38]/30 flex items-center justify-center shrink-0">
+                  <svg className="w-3.5 h-3.5 text-cyan-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                   </svg>
                 </span>
@@ -81,58 +81,58 @@ export default function Login() {
             ))}
           </ul>
         </div>
-        <div className="text-xs text-slate-500">PBL Project · OS + DBMS · Phase 1</div>
+        <div className="text-xs text-slate-400">PBL Project · OS + DBMS · Phase 1</div>
       </div>
 
       {/* Form panel */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          <h1 className="text-2xl font-bold text-slate-900">Welcome back</h1>
-          <p className="text-sm text-slate-500 mt-1 mb-8">Sign in to your placement portal.</p>
+          <h1 className="font-display text-2xl font-bold text-slate-100">Welcome back</h1>
+          <p className="text-sm text-slate-400 mt-1 mb-8">Sign in to your placement portal.</p>
 
           <form onSubmit={submit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
               <input
                 type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@college.edu"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full rounded-xl border border-white/10 bg-[#12172A] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
               />
             </div>
             <div>
             <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
-              <Link to="/forgot-password" className="text-xs font-medium text-indigo-600 hover:text-indigo-800">
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Password</label>
+              <Link to="/forgot-password" className="text-xs font-medium text-[#FF5C38] hover:text-[#FF8A6B]">
                 Forgot password?
               </Link>
             </div>
             <input
               type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full rounded-xl border border-white/10 bg-[#12172A] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
               />
             </div>
             <button
               type="submit" disabled={busy}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
+              className="w-full bg-[#FF5C38] hover:bg-[#E8492B] disabled:opacity-60 text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
             >
               {busy ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
 
-          <p className="text-sm text-slate-500 mt-6 text-center">
+          <p className="text-sm text-slate-400 mt-6 text-center">
             New here?{' '}
-            <Link to="/register" className="font-semibold text-indigo-600 hover:text-indigo-800">Create an account</Link>
+            <Link to="/register" className="font-semibold text-[#FF5C38] hover:text-[#FF8A6B]">Create an account</Link>
           </p>
 
           <div className="mt-8">
-            <div className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Try a demo account</div>
+            <div className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Try a demo account</div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
               {DEMOS.map((d) => (
                 <button
                   key={d.role} disabled={busy}
                   onClick={(e) => submit(e, d)}
-                  className="border border-slate-200 bg-white hover:border-indigo-300 hover:bg-indigo-50 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-700 transition-colors disabled:opacity-60"
+                  className="border border-white/10 bg-[#12172A] hover:border-[#FF5C38]/40 hover:bg-[#FF5C38]/10 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-300 transition-colors disabled:opacity-60"
                 >
                   {d.role}
                 </button>

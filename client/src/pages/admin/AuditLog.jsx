@@ -111,13 +111,13 @@ export default function AuditLog() {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-        <h2 className="font-semibold text-slate-900 mb-1">Activity log</h2>
-        <p className="text-xs text-slate-500">
+      <div className="bg-[#12172A] rounded-2xl shadow-sm border border-white/10 p-6">
+        <h2 className="font-semibold text-slate-100 mb-1">Activity log</h2>
+        <p className="text-xs text-slate-400">
           Every change the system recorded — bookings, applications and resource bookings — newest first.
           Click a row to see that record’s full history.
         </p>
-        {summaryText && <p className="text-xs text-slate-500 mt-2">Last 7 days — {summaryText}</p>}
+        {summaryText && <p className="text-xs text-slate-400 mt-2">Last 7 days — {summaryText}</p>}
 
         <form onSubmit={applyFilters} className="mt-4 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-3">
           <div className="lg:col-span-2">
@@ -159,7 +159,7 @@ export default function AuditLog() {
           <div className="lg:col-span-6 flex items-center gap-3">
             <button type="submit" className="cf-btn-primary !py-2">Apply filters</button>
             <button type="button" onClick={clearFilters}
-              className="text-sm font-medium text-slate-600 hover:text-slate-900 border border-slate-200 bg-white rounded-xl px-4 py-2 transition-colors">
+              className="text-sm font-medium text-slate-400 hover:text-slate-100 border border-white/10 bg-[#12172A] rounded-xl px-4 py-2 transition-colors">
               Clear
             </button>
             <span className="text-xs text-slate-400">{total} {total === 1 ? 'change' : 'changes'} found</span>
@@ -167,39 +167,39 @@ export default function AuditLog() {
         </form>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
+      <div className="bg-[#12172A] rounded-2xl shadow-sm border border-white/10">
         {loading ? (
-          <div className="text-sm text-slate-500 py-10 text-center">Loading activity…</div>
+          <div className="text-sm text-slate-400 py-10 text-center">Loading activity…</div>
         ) : rows.length === 0 ? (
           <EmptyState title="No activity matches" message="Try clearing a filter or widening the date range." />
         ) : (
           <DataTable
             emptyHint="No activity yet."
             columns={[
-              { key: 'when', label: 'When', render: (r) => <span className="text-[13px] text-slate-600 whitespace-nowrap">{formatDate(r.created_at)}</span> },
+              { key: 'when', label: 'When', render: (r) => <span className="text-[13px] text-slate-400 whitespace-nowrap">{formatDate(r.created_at)}</span> },
               { key: 'who', label: 'Who', render: (r) => <span className="text-[13px]">{r.actor_name ?? (r.actor_id ? `User #${r.actor_id}` : 'System')}</span> },
               { key: 'what', label: 'What happened', render: (r) => <Badge variant={ACTION_BADGE[r.action] ?? 'neutral'}>{VERB[r.action] ?? r.action}</Badge> },
               { key: 'record', label: 'Which record', render: (r) => (
                 <button onClick={() => openHistory(r)} title="See this record's full history"
-                  className="text-[13px] font-medium text-indigo-600 hover:text-indigo-800 hover:underline">
+                  className="text-[13px] font-medium text-[#FF5C38] hover:text-[#FF8A6B] hover:underline">
                   {titleCase(r.entity)}{r.entity_id != null ? ` #${r.entity_id}` : ''}
                 </button>
               ) },
-              { key: 'details', label: 'Details', render: (r) => <span className="text-[13px] text-slate-500">{detailsText(r.details)}</span> },
+              { key: 'details', label: 'Details', render: (r) => <span className="text-[13px] text-slate-400">{detailsText(r.details)}</span> },
             ]}
             rows={rows}
           />
         )}
         {rows.length > 0 && (
-          <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between">
-            <span className="text-xs text-slate-500">Page {page} of {pageCount}</span>
+          <div className="px-5 py-3 border-t border-white/10 flex items-center justify-between">
+            <span className="text-xs text-slate-400">Page {page} of {pageCount}</span>
             <div className="flex gap-2">
               <button onClick={() => load(applied, Math.max(0, offset - PAGE_SIZE))} disabled={offset === 0 || loading}
-                className="text-sm font-medium text-slate-600 border border-slate-200 bg-white rounded-xl px-4 py-2 disabled:opacity-50 transition-colors">
+                className="text-sm font-medium text-slate-400 border border-white/10 bg-[#12172A] rounded-xl px-4 py-2 disabled:opacity-50 transition-colors">
                 Previous
               </button>
               <button onClick={() => load(applied, offset + PAGE_SIZE)} disabled={offset + PAGE_SIZE >= total || loading}
-                className="text-sm font-medium text-slate-600 border border-slate-200 bg-white rounded-xl px-4 py-2 disabled:opacity-50 transition-colors">
+                className="text-sm font-medium text-slate-400 border border-white/10 bg-[#12172A] rounded-xl px-4 py-2 disabled:opacity-50 transition-colors">
                 Next
               </button>
             </div>
@@ -209,21 +209,21 @@ export default function AuditLog() {
 
       {/* Full history of the record clicked above — oldest first. */}
       {selected && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-          <h2 className="font-semibold text-slate-900 mb-1">
+        <div className="bg-[#12172A] rounded-2xl shadow-sm border border-white/10 p-6">
+          <h2 className="font-semibold text-slate-100 mb-1">
             History — {titleCase(selected.entity)} #{selected.entity_id}
           </h2>
-          <p className="text-xs text-slate-500 mb-3">Everything that ever happened to this record, oldest first.</p>
+          <p className="text-xs text-slate-400 mb-3">Everything that ever happened to this record, oldest first.</p>
           {historyLoading ? (
-            <p className="text-sm text-slate-500">Loading history…</p>
+            <p className="text-sm text-slate-400">Loading history…</p>
           ) : selected.history.length === 0 ? (
-            <p className="text-sm text-slate-500">No history found for this record.</p>
+            <p className="text-sm text-slate-400">No history found for this record.</p>
           ) : (
             <ol className="space-y-2">
               {selected.history.map((h) => (
-                <li key={h.id} className="flex items-start gap-3 rounded-xl border border-slate-100 px-3 py-2.5 text-sm">
+                <li key={h.id} className="flex items-start gap-3 rounded-xl border border-white/10 px-3 py-2.5 text-sm">
                   <Badge variant={ACTION_BADGE[h.action] ?? 'neutral'}>{VERB[h.action] ?? h.action}</Badge>
-                  <span className="flex-1 text-slate-700">{detailsText(h.details)}</span>
+                  <span className="flex-1 text-slate-300">{detailsText(h.details)}</span>
                   <span className="text-xs text-slate-400 whitespace-nowrap">{formatDate(h.created_at)}</span>
                 </li>
               ))}

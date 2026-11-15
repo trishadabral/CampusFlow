@@ -27,8 +27,8 @@ function JourneyCard({ item, index, responding, onRespond }) {
     <div className={`cf-card cf-rise cf-rise-${index % 3}`}>
       <div className="flex items-start justify-between gap-3 flex-wrap mb-5">
         <div>
-          <div className="text-xs text-slate-500 font-medium">{item.drive.company}</div>
-          <Link to={`/student/drives/${item.drive.id}`} className="text-lg font-bold text-slate-900 hover:text-indigo-700">
+          <div className="text-xs text-slate-400 font-medium">{item.drive.company}</div>
+          <Link to={`/student/drives/${item.drive.id}`} className="text-lg font-bold text-slate-100 hover:text-[#FF5C38]">
             {item.drive.title}
           </Link>
         </div>
@@ -44,23 +44,23 @@ function JourneyCard({ item, index, responding, onRespond }) {
           </Link>
         )}
         {item.testSession && (
-          <div className="cf-chip bg-indigo-50 text-indigo-700">
+          <div className="cf-chip bg-[#FF5C38]/10 text-[#FF5C38]">
             📍 {item.testSession.title} · {formatDate(item.testSession.starts_at)}
           </div>
         )}
         {item.interview && (
-          <div className="cf-chip bg-emerald-50 text-emerald-700">
+          <div className="cf-chip bg-emerald-500/10 text-emerald-300">
             🎤 Interview · Panel {item.interview.panel}{item.interview.venue ? ` · ${item.interview.venue}` : ''} · {formatDate(item.interview.starts_at)}
           </div>
         )}
       </div>
 
       {item.offer && (
-        <div className={`rounded-2xl p-4 border mt-3 ${item.offer.status === 'accepted' ? 'bg-emerald-50 border-emerald-200' : item.offer.status === 'declined' ? 'bg-slate-50 border-slate-200' : 'bg-amber-50 border-amber-200'}`}>
-          <div className="font-bold text-sm text-slate-900">
+        <div className={`rounded-2xl p-4 border mt-3 ${item.offer.status === 'accepted' ? 'bg-emerald-500/10 border-emerald-500/30' : item.offer.status === 'declined' ? 'bg-[#0B0E1A] border-white/10' : 'bg-amber-500/10 border-amber-500/30'}`}>
+          <div className="font-bold text-sm text-slate-100">
             {item.offer.status === 'pending' ? '🎉 You have an offer!' : item.offer.status === 'accepted' ? '🎉 Offer accepted' : 'Offer declined'}
           </div>
-          <div className="text-sm text-slate-500 mt-0.5">
+          <div className="text-sm text-slate-400 mt-0.5">
             {item.offer.package_lpa != null ? `₹${item.offer.package_lpa} LPA` : 'Package to be confirmed'}
             {item.offer.joining_date ? ` · Joining ${formatDate(item.offer.joining_date).split(',')[0]}` : ''}
           </div>
@@ -71,13 +71,13 @@ function JourneyCard({ item, index, responding, onRespond }) {
               </button>
               <button
                 onClick={() => onRespond(item.offer.id, 'declined')} disabled={responding}
-                className="text-sm font-semibold text-rose-700 hover:text-rose-900 border border-rose-200 hover:border-rose-300 rounded-xl px-4 py-2 bg-white"
+                className="text-sm font-semibold text-rose-300 hover:text-rose-300 border border-rose-500/30 hover:border-rose-500/40 rounded-xl px-4 py-2 bg-[#12172A]"
               >
                 Decline
               </button>
             </div>
           ) : (
-            <div className="text-sm font-semibold text-slate-700 mt-2">
+            <div className="text-sm font-semibold text-slate-300 mt-2">
               You {item.offer.status === 'accepted' ? 'accepted' : 'declined'} this offer
               {item.offer.responded_at ? ` on ${formatDate(item.offer.responded_at).split(',')[0]}` : ''}.
             </div>
@@ -149,14 +149,14 @@ function NextActionCard({ journey }) {
   if (!actions.length) return null;
   const [top, ...rest] = actions;
   return (
-    <div className="cf-card cf-rise !border-indigo-200 bg-indigo-50/60">
+    <div className="cf-card cf-rise !border-[#FF5C38]/30 bg-[#FF5C38]/10">
       <h3 className="cf-section-title">What happens next for you</h3>
-      <p className="text-sm text-slate-700 mt-2">{top.text}</p>
+      <p className="text-sm text-slate-300 mt-2">{top.text}</p>
       <Link to={top.link} className="cf-btn-primary !py-2 mt-3 inline-block">{top.linkLabel}</Link>
       {rest.length > 0 && (
-        <ul className="mt-4 space-y-1.5 border-t border-indigo-100 pt-3">
+        <ul className="mt-4 space-y-1.5 border-t border-[#FF5C38]/25 pt-3">
           {rest.slice(0, 3).map((a, i) => (
-            <li key={i} className="text-sm text-slate-500">• {a.text}</li>
+            <li key={i} className="text-sm text-slate-400">• {a.text}</li>
           ))}
         </ul>
       )}
@@ -216,7 +216,7 @@ export default function StudentDashboard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading your applications…</div>;
+  if (loading) return <div className="text-sm text-slate-400 py-10 text-center">Loading your applications…</div>;
 
   const firstName = user?.name?.split(' ')[0] ?? 'there';
 
@@ -224,14 +224,14 @@ export default function StudentDashboard() {
     <div className="space-y-6">
       <div className="cf-hero cf-rise">
         <div className="relative z-10">
-          <h2 className="text-2xl font-bold">Hey {firstName} 👋</h2>
-          <p className="text-indigo-100 text-sm mt-1 max-w-xl">
+          <h2 className="font-display text-2xl font-bold">Hey {firstName} 👋</h2>
+          <p className="text-cyan-100 text-sm mt-1 max-w-xl">
             {journey.length === 0
               ? 'No applications yet. Find a drive you’re eligible for and apply in one click — we handle every test and interview schedule.'
               : `You have ${journey.length} active application${journey.length !== 1 ? 's' : ''}. Follow each one below — your test venue and time, your result, and your interview slot appear here automatically.`}
           </p>
           <div className="flex gap-3 mt-4 flex-wrap">
-            <Link to="/student/drives" className="bg-white text-indigo-700 font-bold text-sm rounded-xl px-5 py-2.5 shadow-lg hover:-translate-y-px transition-transform">
+            <Link to="/student/drives" className="bg-[#12172A] text-[#FF5C38] font-bold text-sm rounded-xl px-5 py-2.5 shadow-lg hover:-translate-y-px transition-transform">
               Find drives{eligibleCount > 0 && ` (${eligibleCount} for you)`}
             </Link>
             <Link to="/student/bookings" className="bg-white/15 text-white font-semibold text-sm rounded-xl px-5 py-2.5 hover:bg-white/25 transition-colors">

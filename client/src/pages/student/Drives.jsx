@@ -32,8 +32,8 @@ function DriveCard({ detail, index, onApplied }) {
     <div className={`cf-card cf-card-hover cf-rise cf-rise-${index % 3}`}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="text-xs text-slate-500 font-medium">{drive.company?.name}</div>
-          <Link to={`/student/drives/${drive.id}`} className="text-lg font-bold text-slate-900 hover:text-indigo-700 leading-snug">
+          <div className="text-xs text-slate-400 font-medium">{drive.company?.name}</div>
+          <Link to={`/student/drives/${drive.id}`} className="text-lg font-bold text-slate-100 hover:text-[#FF5C38] leading-snug">
             {drive.title}
           </Link>
         </div>
@@ -43,11 +43,11 @@ function DriveCard({ detail, index, onApplied }) {
             ? <Badge variant="success">You're eligible</Badge>
             : <Badge variant="neutral">Not eligible</Badge>}
       </div>
-      {drive.description && <p className="text-sm text-slate-500 mt-2 line-clamp-2">{drive.description}</p>}
+      {drive.description && <p className="text-sm text-slate-400 mt-2 line-clamp-2">{drive.description}</p>}
       <div className="flex flex-wrap gap-2 mt-3">
-        <span className="cf-chip bg-slate-100 text-slate-600">CGPA ≥ {drive.min_cgpa}</span>
-        <span className="cf-chip bg-slate-100 text-slate-600">{(drive.allowed_branches ?? []).join(', ')}</span>
-        <span className="cf-chip bg-slate-100 text-slate-600">{questions_count ?? 0} test questions</span>
+        <span className="cf-chip bg-[#151B30] text-slate-400">CGPA ≥ {drive.min_cgpa}</span>
+        <span className="cf-chip bg-[#151B30] text-slate-400">{(drive.allowed_branches ?? []).join(', ')}</span>
+        <span className="cf-chip bg-[#151B30] text-slate-400">{questions_count ?? 0} test questions</span>
       </div>
       {!my_application && (eligibility?.checks?.length > 0) && (
         <ul className="mt-2 space-y-0.5">
@@ -56,7 +56,7 @@ function DriveCard({ detail, index, onApplied }) {
           ))}
         </ul>
       )}
-      <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
+      <div className="flex items-center justify-between mt-4 pt-4 border-t border-white/10">
         <span className="text-xs text-slate-400">Apply by {formatDate(drive.application_deadline)}</span>
         {my_application ? (
           <Link to={`/student/drives/${drive.id}`} className="cf-btn-secondary !py-2">Track →</Link>
@@ -96,14 +96,14 @@ export default function Drives() {
     setItems((list) => list.map((d) => d.drive.id === driveId ? { ...d, my_application: { status: 'applied' } } : d));
   };
 
-  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Finding drives for you…</div>;
+  if (loading) return <div className="text-sm text-slate-400 py-10 text-center">Finding drives for you…</div>;
 
   return (
     <div className="space-y-6">
       <div className="cf-hero cf-rise">
         <div className="relative z-10">
-          <h2 className="text-2xl font-bold">Open placement drives</h2>
-          <p className="text-indigo-100 text-sm mt-1">
+          <h2 className="font-display text-2xl font-bold">Open placement drives</h2>
+          <p className="text-cyan-100 text-sm mt-1">
             {items.length === 0
               ? 'Nothing open right now — check back soon.'
               : `${items.length} drive${items.length !== 1 ? 's' : ''} open. Your eligibility is checked on each one.`}

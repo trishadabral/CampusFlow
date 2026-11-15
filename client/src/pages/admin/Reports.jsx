@@ -11,7 +11,7 @@ import EmptyState from '../../components/EmptyState.jsx';
 function Funnel({ applied, shortlisted, selected }) {
   const max = Math.max(applied, 1);
   const bars = [
-    ['Applied', applied, 'bg-indigo-500'],
+    ['Applied', applied, 'bg-[#FF5C38]'],
     ['Shortlisted', shortlisted, 'bg-amber-500'],
     ['Selected', selected, 'bg-emerald-500'],
   ];
@@ -19,11 +19,11 @@ function Funnel({ applied, shortlisted, selected }) {
     <div className="space-y-1.5 min-w-[180px]">
       {bars.map(([label, n, color]) => (
         <div key={label} className="flex items-center gap-2">
-          <span className="text-xs text-slate-500 w-20 shrink-0">{label}</span>
-          <div className="flex-1 h-2 bg-slate-100 rounded-full overflow-hidden">
+          <span className="text-xs text-slate-400 w-20 shrink-0">{label}</span>
+          <div className="flex-1 h-2 bg-[#151B30] rounded-full overflow-hidden">
             <div className={`h-full rounded-full ${color}`} style={{ width: `${(n / max) * 100}%` }} />
           </div>
-          <span className="text-xs font-semibold text-slate-700 w-8 text-right">{n}</span>
+          <span className="text-xs font-semibold text-slate-300 w-8 text-right">{n}</span>
         </div>
       ))}
     </div>
@@ -133,7 +133,7 @@ export default function Reports() {
       s.key === key ? { key, dir: s.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }
     );
 
-  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading report…</div>;
+  if (loading) return <div className="text-sm text-slate-400 py-10 text-center">Loading report…</div>;
 
   const totals = rows.reduce(
     (t, r) => ({
@@ -181,33 +181,33 @@ export default function Reports() {
   return (
     <div className="space-y-6">
       {/* Placement statistics (Phase 2, M4) */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
-        <h2 className="font-semibold text-slate-900 mb-1">Placement statistics</h2>
-        <p className="text-xs text-slate-500 mb-4">How each graduating year is doing, and which companies are hiring the most.</p>
+      <div className="bg-[#12172A] rounded-2xl shadow-sm border border-white/10 p-6">
+        <h2 className="font-semibold text-slate-100 mb-1">Placement statistics</h2>
+        <p className="text-xs text-slate-400 mb-4">How each graduating year is doing, and which companies are hiring the most.</p>
         {!stats ? (
           <EmptyState title="No statistics yet" message="Once students and selections exist, the year-wise numbers appear here." />
         ) : (
           <div className="space-y-5">
             <div>
-              <span className="text-xs text-slate-500">Average package offered (all years)</span>
-              <div className="text-2xl font-bold text-slate-900 mt-0.5">
+              <span className="text-xs text-slate-400">Average package offered (all years)</span>
+              <div className="font-display text-2xl font-bold text-slate-100 mt-0.5">
                 {stats.overall_avg_package_lpa != null ? `₹${Number(stats.overall_avg_package_lpa).toFixed(2)} LPA` : 'No offers yet'}
               </div>
             </div>
             {(stats.by_year ?? []).length === 0 ? (
-              <p className="text-sm text-slate-500">No students on record yet.</p>
+              <p className="text-sm text-slate-400">No students on record yet.</p>
             ) : (
               <div className="space-y-3">
                 {(stats.by_year ?? []).map((y) => (
                   <div key={y.graduation_year}>
                     <div className="flex items-center justify-between text-sm mb-1">
-                      <span className="font-medium text-slate-900">Class of {y.graduation_year}</span>
-                      <span className="text-slate-500">
+                      <span className="font-medium text-slate-100">Class of {y.graduation_year}</span>
+                      <span className="text-slate-400">
                         {y.selected} of {y.total_students} placed ({y.placement_pct}%)
                         {y.avg_package_lpa != null ? ` · avg ₹${Number(y.avg_package_lpa).toFixed(2)} LPA` : ' · no offers yet'}
                       </span>
                     </div>
-                    <div className="h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                    <div className="h-2.5 bg-[#151B30] rounded-full overflow-hidden">
                       <div className="h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, y.placement_pct || 0)}%` }} />
                     </div>
                   </div>
@@ -215,15 +215,15 @@ export default function Reports() {
               </div>
             )}
             <div>
-              <h3 className="text-sm font-bold text-slate-700 mb-2">Top recruiters</h3>
+              <h3 className="text-sm font-bold text-slate-300 mb-2">Top recruiters</h3>
               {(stats.top_recruiters ?? []).length === 0 ? (
-                <p className="text-sm text-slate-500">No students placed yet — the top recruiters will show up here once selections are made.</p>
+                <p className="text-sm text-slate-400">No students placed yet — the top recruiters will show up here once selections are made.</p>
               ) : (
-                <ul className="divide-y divide-slate-50">
+                <ul className="divide-y divide-white/10">
                   {(stats.top_recruiters ?? []).map((r) => (
                     <li key={r.company} className="py-2 flex items-center justify-between text-sm">
-                      <span className="font-medium text-slate-900">{r.company}</span>
-                      <span className="text-slate-500">{r.placed} student{r.placed === 1 ? '' : 's'} placed · {r.drives} drive{r.drives === 1 ? '' : 's'}</span>
+                      <span className="font-medium text-slate-100">{r.company}</span>
+                      <span className="text-slate-400">{r.placed} student{r.placed === 1 ? '' : 's'} placed · {r.drives} drive{r.drives === 1 ? '' : 's'}</span>
                     </li>
                   ))}
                 </ul>
@@ -233,18 +233,18 @@ export default function Reports() {
         )}
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+      <div className="bg-[#12172A] rounded-2xl shadow-sm border border-white/10 p-6">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <h2 className="font-semibold text-slate-900 mb-1">Placement progress — all drives</h2>
-            <p className="text-xs text-slate-500 mb-4">Aggregated from the database with GROUP BY joins, per drive.</p>
+            <h2 className="font-semibold text-slate-100 mb-1">Placement progress — all drives</h2>
+            <p className="text-xs text-slate-400 mb-4">Aggregated from the database with GROUP BY joins, per drive.</p>
           </div>
           <div className="flex gap-2">
             <button onClick={() => downloadCsv('placement', null, 'placement-report.csv')} className="cf-btn-secondary">Download CSV</button>
             <button onClick={() => window.print()} className="cf-btn-secondary">Print</button>
           </div>
         </div>
-        <p className="text-xs text-slate-500 mb-4">For one drive at a time — test scores, shortlist rate by branch and where students drop off — open that drive as its recruiter: each drive page has a “How this drive is doing” section.</p>
+        <p className="text-xs text-slate-400 mb-4">For one drive at a time — test scores, shortlist rate by branch and where students drop off — open that drive as its recruiter: each drive page has a “How this drive is doing” section.</p>
         {rows.length === 0 ? (
           <EmptyState title="No data yet" message="Once drives collect applications, the progress bars appear here." />
         ) : (
@@ -252,14 +252,14 @@ export default function Reports() {
         )}
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
-        <div className="px-5 py-4 border-b border-slate-100">
-          <h2 className="font-semibold text-slate-900">Drive report</h2>
+      <div className="bg-[#12172A] rounded-2xl shadow-sm border border-white/10">
+        <div className="px-5 py-4 border-b border-white/10">
+          <h2 className="font-semibold text-slate-100">Drive report</h2>
         </div>
         <DataTable
           emptyHint="No drives to report on yet."
           columns={[
-            { key: 'drive', label: 'Drive', render: (r) => <span className="font-medium text-slate-900">{r.drive_title}</span> },
+            { key: 'drive', label: 'Drive', render: (r) => <span className="font-medium text-slate-100">{r.drive_title}</span> },
             { key: 'company', label: 'Company', render: (r) => r.company ?? '—' },
             { key: 'progress', label: 'Progress', render: (r) => <Funnel applied={r.applied ?? 0} shortlisted={r.shortlisted ?? 0} selected={r.selected ?? 0} /> },
             { key: 'avg', label: 'Avg CGPA (shortlisted)', render: (r) => (r.avg_cgpa_shortlisted != null ? Number(r.avg_cgpa_shortlisted).toFixed(2) : '—') },
@@ -267,21 +267,21 @@ export default function Reports() {
               <div className="flex flex-col gap-1 items-start whitespace-nowrap">
                 <button
                   onClick={() => viewRoster(r)}
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800"
+                  className="text-xs font-bold text-[#FF5C38] hover:text-[#FF8A6B]"
                   title="See every applicant for this drive — session, result and status"
                 >
                   {rosterDrive?.drive_id === r.drive_id ? 'Hide list' : 'View list'}
                 </button>
                 <button
                   onClick={() => downloadCsv('roster', r.drive_id, `drive-${r.drive_id}-roster.csv`)}
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800"
+                  className="text-xs font-bold text-[#FF5C38] hover:text-[#FF8A6B]"
                   title="Download this drive's student list as a spreadsheet file"
                 >
                   Download list (CSV)
                 </button>
                 <button
                   onClick={() => downloadPdf(r)}
-                  className="text-xs font-bold text-indigo-600 hover:text-indigo-800"
+                  className="text-xs font-bold text-[#FF5C38] hover:text-[#FF8A6B]"
                   title="Download this drive's result as a PDF file"
                 >
                   Download result (PDF)
@@ -294,11 +294,11 @@ export default function Reports() {
       </div>
 
       {rosterDrive && (
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
-          <div className="px-5 py-4 border-b border-slate-100 flex items-start justify-between gap-3 flex-wrap">
+        <div className="bg-[#12172A] rounded-2xl shadow-sm border border-white/10">
+          <div className="px-5 py-4 border-b border-white/10 flex items-start justify-between gap-3 flex-wrap">
             <div>
-              <h2 className="font-semibold text-slate-900">Result — {rosterDrive.drive_title}</h2>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <h2 className="font-semibold text-slate-100">Result — {rosterDrive.drive_title}</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
                 {rosterDrive.company ?? ''} · Everyone who applied, with their test result and interview slot.
               </p>
             </div>
@@ -306,7 +306,7 @@ export default function Reports() {
               <button onClick={() => downloadPdf(rosterDrive)} className="cf-btn-primary">
                 Download result (PDF)
               </button>
-              <button onClick={closeRoster} className="text-xs font-semibold text-slate-500 hover:text-slate-800 px-2 py-2">Close ✕</button>
+              <button onClick={closeRoster} className="text-xs font-semibold text-slate-400 hover:text-slate-200 px-2 py-2">Close ✕</button>
             </div>
           </div>
 
@@ -318,9 +318,9 @@ export default function Reports() {
               ['Selected', rosterDrive.selected ?? 0],
               ['Avg CGPA (shortlisted)', rosterDrive.avg_cgpa_shortlisted != null ? Number(rosterDrive.avg_cgpa_shortlisted).toFixed(2) : '—'],
             ].map(([label, value]) => (
-              <div key={label} className="bg-slate-50 rounded-xl px-4 py-3">
-                <div className="text-xl font-bold text-slate-900">{value}</div>
-                <div className="text-xs text-slate-500">{label}</div>
+              <div key={label} className="bg-[#0B0E1A] rounded-xl px-4 py-3">
+                <div className="text-xl font-bold text-slate-100">{value}</div>
+                <div className="text-xs text-slate-400">{label}</div>
               </div>
             ))}
           </div>
@@ -341,21 +341,21 @@ export default function Reports() {
                   onClick={() => setRosterStatus(s)}
                   className={`px-3 py-1.5 rounded-full text-xs font-semibold border ${
                     rosterStatus === s
-                      ? 'bg-indigo-600 text-white border-indigo-600'
-                      : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'
+                      ? 'bg-[#FF5C38] text-white border-[#FF5C38]'
+                      : 'bg-[#12172A] text-slate-400 border-white/10 hover:border-[#FF5C38]/40'
                   }`}
                 >
                   {s === 'all' ? 'All' : s.replace('_', ' ')}
                 </button>
               ))}
             </div>
-            <span className="text-xs text-slate-500 ml-auto">
+            <span className="text-xs text-slate-400 ml-auto">
               {visibleRoster.length} of {roster.length} shown
             </span>
           </div>
 
           {rosterLoading ? (
-            <p className="text-sm text-slate-500 py-10 text-center">Loading list…</p>
+            <p className="text-sm text-slate-400 py-10 text-center">Loading list…</p>
           ) : visibleRoster.length === 0 ? (
             <div className="px-5 py-8 text-center text-sm text-slate-400">
               {roster.length === 0 ? 'No applicants for this drive yet.' : 'Nobody matches that search.'}
@@ -363,8 +363,8 @@ export default function Reports() {
           ) : (
             <div className="overflow-x-auto slim-scroll mt-2">
               <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-white">
-                  <tr className="border-b border-slate-100 text-left">
+                <thead className="sticky top-0 bg-[#12172A]">
+                  <tr className="border-b border-white/10 text-left">
                     {[
                       ['name', 'Student'],
                       ['roll_no', 'Roll no'],
@@ -375,15 +375,15 @@ export default function Reports() {
                       ['test_session', 'Test session'],
                       ['interview_slot', 'Interview'],
                     ].map(([key, label]) => (
-                      <th key={key} className="px-5 py-3 text-xs text-slate-500 uppercase tracking-wide whitespace-nowrap">
+                      <th key={key} className="px-5 py-3 text-xs text-slate-400 uppercase tracking-wide whitespace-nowrap">
                         <button
                           type="button"
                           onClick={() => toggleSort(key)}
-                          className="flex items-center gap-1 font-semibold uppercase hover:text-indigo-700"
+                          className="flex items-center gap-1 font-semibold uppercase hover:text-[#FF5C38]"
                           title="Sort by this column"
                         >
                           {label}
-                          <span className={rosterSort.key === key ? 'text-indigo-600' : 'text-slate-300'}>
+                          <span className={rosterSort.key === key ? 'text-[#FF5C38]' : 'text-slate-300'}>
                             {rosterSort.key === key ? (rosterSort.dir === 'asc' ? '▲' : '▼') : '↕'}
                           </span>
                         </button>
@@ -391,10 +391,10 @@ export default function Reports() {
                     ))}
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody className="divide-y divide-white/10">
                   {visibleRoster.map((r, i) => (
-                    <tr key={r.email ?? i} className="hover:bg-slate-50/70 transition-colors">
-                      <td className="px-5 py-3.5 align-middle"><span className="font-medium text-slate-900">{r.name}</span></td>
+                    <tr key={r.email ?? i} className="hover:bg-white/5 transition-colors">
+                      <td className="px-5 py-3.5 align-middle"><span className="font-medium text-slate-100">{r.name}</span></td>
                       <td className="px-5 py-3.5 align-middle">{r.roll_no ?? '—'}</td>
                       <td className="px-5 py-3.5 align-middle">{r.branch ?? '—'}</td>
                       <td className="px-5 py-3.5 align-middle">{r.cgpa ?? '—'}</td>

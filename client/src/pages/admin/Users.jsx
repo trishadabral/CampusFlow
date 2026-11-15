@@ -34,14 +34,14 @@ export default function Users() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading users…</div>;
+  if (loading) return <div className="text-sm text-slate-400 py-10 text-center">Loading users…</div>;
 
   return (
     <div className="space-y-6">
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100">
-      <div className="px-5 py-4 border-b border-slate-100">
-        <h2 className="font-semibold text-slate-900">Users</h2>
-        <p className="text-xs text-slate-500 mt-0.5">Role-based access: admins see everything, recruiters manage their drives, students see their own data.</p>
+    <div className="bg-[#12172A] rounded-2xl shadow-sm border border-white/10">
+      <div className="px-5 py-4 border-b border-white/10">
+        <h2 className="font-semibold text-slate-100">Users</h2>
+        <p className="text-xs text-slate-400 mt-0.5">Role-based access: admins see everything, recruiters manage their drives, students see their own data.</p>
       </div>
       {unavailable ? (
         <EmptyState
@@ -53,8 +53,8 @@ export default function Users() {
       ) : (
         <DataTable
           columns={[
-            { key: 'name', label: 'Name', render: (u) => <span className="font-medium text-slate-900">{u.name}</span> },
-            { key: 'email', label: 'Email', render: (u) => <span className="text-slate-600">{u.email}</span> },
+            { key: 'name', label: 'Name', render: (u) => <span className="font-medium text-slate-100">{u.name}</span> },
+            { key: 'email', label: 'Email', render: (u) => <span className="text-slate-400">{u.email}</span> },
             { key: 'role', label: 'Role', render: (u) => <Badge variant={ROLE_PILL[u.role] ?? 'neutral'}>{u.role}</Badge> },
             { key: 'branch', label: 'Branch', render: (u) => u.branch ?? '—' },
             { key: 'cgpa', label: 'CGPA', render: (u) => u.cgpa ?? '—' },

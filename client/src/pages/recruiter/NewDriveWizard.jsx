@@ -208,9 +208,9 @@ export default function NewDriveWizard() {
               <label className="cf-label">Company</label>
               <div className="flex gap-2">
                 {companiesLoading ? (
-                  <div className="flex-1 border border-slate-200 rounded-xl px-3 py-2"><Spinner text="Loading companies…" /></div>
+                  <div className="flex-1 border border-white/10 rounded-xl px-3 py-2"><Spinner text="Loading companies…" /></div>
                 ) : companiesError ? (
-                  <div className="flex-1 bg-rose-50 border border-rose-200 text-rose-800 text-sm rounded-xl px-4 py-2.5">
+                  <div className="flex-1 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm rounded-xl px-4 py-2.5">
                     {companiesError}{' '}
                     <button type="button" onClick={loadCompanies} className="font-semibold underline">Try again</button>
                   </div>
@@ -222,7 +222,7 @@ export default function NewDriveWizard() {
                 <button type="button" onClick={() => setShowNewCompany((v) => !v)} className="cf-btn-secondary whitespace-nowrap">+ New</button>
               </div>
               {showNewCompany && (
-                <div className="mt-3 p-4 bg-slate-50 rounded-xl space-y-3">
+                <div className="mt-3 p-4 bg-[#0B0E1A] rounded-xl space-y-3">
                   <input value={newCompany.name} onChange={(e) => setNewCompany({ ...newCompany, name: e.target.value })} placeholder="Company name" className="cf-input" />
                   <div className="grid grid-cols-2 gap-3">
                     <input value={newCompany.website} onChange={(e) => setNewCompany({ ...newCompany, website: e.target.value })} placeholder="Website" className="cf-input" />
@@ -252,7 +252,7 @@ export default function NewDriveWizard() {
               {BRANCHES.map((b) => (
                 <button
                   key={b} type="button" onClick={() => toggleBranch(b)}
-                  className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${form.allowed_branches.includes(b) ? 'bg-indigo-600 text-white border-indigo-600 shadow-md shadow-indigo-200' : 'bg-white text-slate-600 border-slate-200 hover:border-indigo-300'}`}
+                  className={`px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${form.allowed_branches.includes(b) ? 'bg-[#FF5C38] text-white border-[#FF5C38] shadow-md shadow-black/30' : 'bg-[#12172A] text-slate-400 border-white/10 hover:border-[#FF5C38]/40'}`}
                 >
                   {b}
                 </button>
@@ -303,21 +303,21 @@ export default function NewDriveWizard() {
             <Badge variant="info">{questions.length} question{questions.length !== 1 && 's'}</Badge>
           </div>
           {questions.map((q, i) => (
-            <div key={i} className="border border-slate-200 rounded-2xl p-5 bg-slate-50/50 space-y-3">
+            <div key={i} className="border border-white/10 rounded-2xl p-5 bg-white/5 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-bold text-slate-700">Question {i + 1}</span>
+                <span className="text-sm font-bold text-slate-300">Question {i + 1}</span>
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-slate-500 font-medium">Marks</label>
+                  <label className="text-xs text-slate-400 font-medium">Marks</label>
                   <input type="number" min="1" value={q.marks} onChange={(e) => setQ(i, { marks: e.target.value })} className="cf-input !w-20 !py-1.5" />
                   {questions.length > 1 && (
-                    <button type="button" onClick={() => setQuestions((qs) => qs.filter((_, j) => j !== i))} className="text-xs font-semibold text-rose-600 hover:text-rose-700 px-2 py-1">Remove</button>
+                    <button type="button" onClick={() => setQuestions((qs) => qs.filter((_, j) => j !== i))} className="text-xs font-semibold text-rose-400 hover:text-rose-300 px-2 py-1">Remove</button>
                   )}
                 </div>
               </div>
               <input value={q.text} onChange={(e) => setQ(i, { text: e.target.value })} placeholder="Write the question…" className="cf-input" />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                 {q.options.map((opt, oi) => (
-                  <label key={oi} className={`flex items-center gap-2.5 rounded-xl border px-3 py-2 cursor-pointer transition-all ${q.correct_index === oi ? 'border-emerald-400 bg-emerald-50' : 'border-slate-200 bg-white hover:border-indigo-300'}`}>
+                  <label key={oi} className={`flex items-center gap-2.5 rounded-xl border px-3 py-2 cursor-pointer transition-all ${q.correct_index === oi ? 'border-emerald-500/50 bg-emerald-500/10' : 'border-white/10 bg-[#12172A] hover:border-[#FF5C38]/40'}`}>
                     <input type="radio" name={`q-${i}`} checked={q.correct_index === oi} onChange={() => setQ(i, { correct_index: oi })} className="accent-emerald-600 w-4 h-4" />
                     <input value={opt} onChange={(e) => setOpt(i, oi, e.target.value)} placeholder={`Option ${oi + 1}`} className="flex-1 bg-transparent text-sm focus:outline-none placeholder:text-slate-400" />
                   </label>
@@ -340,21 +340,21 @@ export default function NewDriveWizard() {
             <p className="cf-section-sub">Three numbers. The system plans all the interviews from them.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border border-slate-200 rounded-2xl p-5">
+            <div className="border border-white/10 rounded-2xl p-5">
               <label className="cf-label">Interviewers</label>
               <div className="flex items-center gap-3">
-                <button type="button" onClick={() => setI('num_interviewers', Math.max(1, Number(interview.num_interviewers) - 1))} className="w-9 h-9 rounded-xl border border-slate-200 font-bold text-slate-600 hover:border-indigo-300 hover:text-indigo-600">−</button>
-                <span className="text-2xl font-bold text-slate-900 w-10 text-center">{interview.num_interviewers}</span>
-                <button type="button" onClick={() => setI('num_interviewers', Math.min(10, Number(interview.num_interviewers) + 1))} className="w-9 h-9 rounded-xl border border-slate-200 font-bold text-slate-600 hover:border-indigo-300 hover:text-indigo-600">+</button>
+                <button type="button" onClick={() => setI('num_interviewers', Math.max(1, Number(interview.num_interviewers) - 1))} className="w-9 h-9 rounded-xl border border-white/10 font-bold text-slate-400 hover:border-[#FF5C38]/40 hover:text-[#FF5C38]">−</button>
+                <span className="font-display text-2xl font-bold text-slate-100 w-10 text-center">{interview.num_interviewers}</span>
+                <button type="button" onClick={() => setI('num_interviewers', Math.min(10, Number(interview.num_interviewers) + 1))} className="w-9 h-9 rounded-xl border border-white/10 font-bold text-slate-400 hover:border-[#FF5C38]/40 hover:text-[#FF5C38]">+</button>
               </div>
               <p className="cf-hint">Parallel interview panels the system will run.</p>
             </div>
-            <div className="border border-slate-200 rounded-2xl p-5">
+            <div className="border border-white/10 rounded-2xl p-5">
               <label className="cf-label">Min score to qualify (%)</label>
               <input type="number" min="0" max="100" value={interview.min_test_score} onChange={(e) => setI('min_test_score', e.target.value)} className="cf-input" />
               <p className="cf-hint">Below this, candidates are auto-rejected.</p>
             </div>
-            <div className="border border-slate-200 rounded-2xl p-5">
+            <div className="border border-white/10 rounded-2xl p-5">
               <label className="cf-label">Max shortlist</label>
               <input type="number" min="1" value={interview.max_shortlist} onChange={(e) => setI('max_shortlist', e.target.value)} className="cf-input" />
               <p className="cf-hint">Top scorers above the cutoff, capped here.</p>
@@ -370,7 +370,7 @@ export default function NewDriveWizard() {
               <input type="number" min="5" value={interview.interview_duration_min} onChange={(e) => setI('interview_duration_min', e.target.value)} className="cf-input" />
             </div>
           </div>
-          <div className="bg-indigo-50 border border-indigo-100 rounded-2xl p-4 text-sm text-indigo-900">
+          <div className="bg-[#FF5C38]/10 border border-[#FF5C38]/25 rounded-2xl p-4 text-sm text-[#FF8A6B]">
             After results, the system assigns each shortlisted student the earliest free slot across {interview.num_interviewers} panel{Number(interview.num_interviewers) !== 1 && 's'},
             rotating through the admin's interview rooms. Nobody books anything manually.
           </div>
@@ -385,28 +385,28 @@ export default function NewDriveWizard() {
             <p className="cf-section-sub">One last look. Publishing opens applications immediately.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-            <div className="bg-slate-50 rounded-xl p-4">
+            <div className="bg-[#0B0E1A] rounded-xl p-4">
               <div className="text-xs uppercase tracking-wide text-slate-400 font-semibold mb-1">Drive</div>
-              <div className="font-bold text-slate-900">{form.title || '—'}</div>
-              <div className="text-slate-500">{companies.find((c) => String(c.id) === form.company_id)?.name}{form.package_lpa !== '' && ` · ₹${form.package_lpa} LPA`}</div>
+              <div className="font-bold text-slate-100">{form.title || '—'}</div>
+              <div className="text-slate-400">{companies.find((c) => String(c.id) === form.company_id)?.name}{form.package_lpa !== '' && ` · ₹${form.package_lpa} LPA`}</div>
             </div>
-            <div className="bg-slate-50 rounded-xl p-4">
+            <div className="bg-[#0B0E1A] rounded-xl p-4">
               <div className="text-xs uppercase tracking-wide text-slate-400 font-semibold mb-1">Eligibility</div>
-              <div className="text-slate-700">CGPA ≥ {form.min_cgpa} · {form.allowed_branches.join(', ')} · ≤{form.max_backlogs} backlogs · {form.graduation_year}</div>
+              <div className="text-slate-300">CGPA ≥ {form.min_cgpa} · {form.allowed_branches.join(', ')} · ≤{form.max_backlogs} backlogs · {form.graduation_year}</div>
             </div>
-            <div className="bg-slate-50 rounded-xl p-4">
+            <div className="bg-[#0B0E1A] rounded-xl p-4">
               <div className="text-xs uppercase tracking-wide text-slate-400 font-semibold mb-1">Test</div>
-              <div className="text-slate-700">{questions.length} questions · {interview.test_duration_min} min · {form.test_date || 'no date'}</div>
+              <div className="text-slate-300">{questions.length} questions · {interview.test_duration_min} min · {form.test_date || 'no date'}</div>
             </div>
-            <div className="bg-slate-50 rounded-xl p-4">
+            <div className="bg-[#0B0E1A] rounded-xl p-4">
               <div className="text-xs uppercase tracking-wide text-slate-400 font-semibold mb-1">Interviews</div>
-              <div className="text-slate-700">{interview.num_interviewers} panels · ≥{interview.min_test_score}% to qualify · top {interview.max_shortlist}</div>
+              <div className="text-slate-300">{interview.num_interviewers} panels · ≥{interview.min_test_score}% to qualify · top {interview.max_shortlist}</div>
             </div>
           </div>
           {preview && (
-            <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-sm text-emerald-900">
+            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-2xl p-4 text-sm text-emerald-300">
               <span className="font-bold text-lg">{preview.count}</span> students currently match these criteria
-              {preview.sample?.length > 0 && <span className="text-emerald-700"> — e.g. {preview.sample.join(', ')}</span>}
+              {preview.sample?.length > 0 && <span className="text-emerald-300"> — e.g. {preview.sample.join(', ')}</span>}
             </div>
           )}
         </div>

@@ -74,7 +74,7 @@ export default function TestTaker() {
 
   useEffect(() => () => clearInterval(timerRef.current), []);
 
-  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading your test…</div>;
+  if (loading) return <div className="text-sm text-slate-400 py-10 text-center">Loading your test…</div>;
   if (!paper) return null;
 
   // --- already submitted: result screen ---
@@ -85,18 +85,18 @@ export default function TestTaker() {
       <div className="max-w-xl mx-auto">
         <div className="cf-card cf-rise text-center py-10">
           <div className="text-5xl mb-4">{result.already ? '📋' : passed ? '🎉' : '📊'}</div>
-          <h2 className="text-2xl font-bold text-slate-900">
+          <h2 className="font-display text-2xl font-bold text-slate-100">
             {result.already ? 'Test already submitted' : 'Test submitted!'}
           </h2>
-          <div className={`text-5xl font-black mt-4 ${passed ? 'text-emerald-600' : 'text-slate-700'}`}>
+          <div className={`text-5xl font-black mt-4 ${passed ? 'text-emerald-400' : 'text-slate-300'}`}>
             {pct.toFixed(1)}%
           </div>
-          <p className="text-sm text-slate-500 mt-2">
+          <p className="text-sm text-slate-400 mt-2">
             {Number(result.score)}/{Number(result.total)} marks
             {result.submitted_at && ` · submitted ${formatDate(result.submitted_at)}`}
           </p>
           {!result.already && (
-            <p className="text-sm text-slate-600 mt-4 bg-slate-50 rounded-xl px-4 py-3 inline-block">
+            <p className="text-sm text-slate-400 mt-4 bg-[#0B0E1A] rounded-xl px-4 py-3 inline-block">
               {passed
                 ? 'Above the cutoff — you’re in the running for the interview shortlist. Watch your notifications.'
                 : 'Below the cutoff this time. More drives are coming — keep going.'}
@@ -113,7 +113,7 @@ export default function TestTaker() {
   if (!questions.length) {
     return (
       <div className="max-w-xl mx-auto"><div className="cf-card text-center py-10">
-        <p className="text-sm text-slate-500">This drive has no questions yet.</p>
+        <p className="text-sm text-slate-400">This drive has no questions yet.</p>
         <Link to={`/student/drives/${driveId}`} className="cf-btn-secondary mt-4">Back to drive</Link>
       </div></div>
     );
@@ -124,13 +124,13 @@ export default function TestTaker() {
     return (
       <div className="max-w-xl mx-auto">
         <div className="cf-card cf-rise">
-          <h2 className="text-xl font-bold text-slate-900">{paper.drive?.title} — Aptitude Test</h2>
+          <h2 className="text-xl font-bold text-slate-100">{paper.drive?.title} — Aptitude Test</h2>
           {paper.session && (
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-sm text-slate-400 mt-1">
               📍 {paper.session.title} · {formatDate(paper.session.starts_at)}
             </p>
           )}
-          <ul className="mt-5 space-y-2.5 text-sm text-slate-600">
+          <ul className="mt-5 space-y-2.5 text-sm text-slate-400">
             <li className="flex gap-2"><span>📝</span> {questions.length} multiple-choice questions, one attempt only.</li>
             <li className="flex gap-2"><span>⏱️</span> {paper.drive?.test_duration_min} minutes on the clock — auto-submits at zero.</li>
             <li className="flex gap-2"><span>🎯</span> Grading is instant and automatic.</li>
@@ -151,31 +151,31 @@ export default function TestTaker() {
     <div className="max-w-2xl mx-auto space-y-4">
       <div className="cf-card !py-4 flex items-center justify-between gap-4 sticky top-20 z-10">
         <div>
-          <div className="text-xs text-slate-500 font-semibold uppercase tracking-wide">
+          <div className="text-xs text-slate-400 font-semibold uppercase tracking-wide">
             Question {index + 1} of {questions.length}
           </div>
-          <div className="h-2 w-48 bg-slate-100 rounded-full mt-1.5 overflow-hidden">
-            <div className="h-full rounded-full transition-all" style={{ width: `${((index + 1) / questions.length) * 100}%`, background: 'linear-gradient(90deg,#4f46e5,#7c3aed)' }} />
+          <div className="h-2 w-48 bg-[#151B30] rounded-full mt-1.5 overflow-hidden">
+            <div className="h-full rounded-full transition-all" style={{ width: `${((index + 1) / questions.length) * 100}%`, background: '#FF5C38' }} />
           </div>
         </div>
-        <div className={`font-mono-tight text-xl font-bold px-4 py-2 rounded-xl ${urgent ? 'bg-rose-50 text-rose-700 animate-pulse' : 'bg-slate-100 text-slate-700'}`}>
+        <div className={`font-mono-tight text-xl font-bold px-4 py-2 rounded-xl ${urgent ? 'bg-rose-500/10 text-rose-300 animate-pulse' : 'bg-[#151B30] text-slate-300'}`}>
           ⏱ {mmss(secondsLeft)}
         </div>
       </div>
 
       <div className="cf-card cf-rise" key={q.id}>
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-lg font-semibold text-slate-900 leading-snug">{q.text}</h3>
-          <span className="cf-chip bg-slate-100 text-slate-500 shrink-0">{q.marks} mark{q.marks !== 1 && 's'}</span>
+          <h3 className="text-lg font-semibold text-slate-100 leading-snug">{q.text}</h3>
+          <span className="cf-chip bg-[#151B30] text-slate-400 shrink-0">{q.marks} mark{q.marks !== 1 && 's'}</span>
         </div>
         <div className="space-y-2.5 mt-5">
           {q.options.map((opt, oi) => (
             <button
               key={oi}
               onClick={() => setAnswers((a) => ({ ...a, [q.id]: oi }))}
-              className={`w-full text-left rounded-xl border-2 px-4 py-3.5 text-sm font-medium transition-all ${answers[q.id] === oi ? 'border-indigo-600 bg-indigo-50 text-indigo-900 shadow-md shadow-indigo-100' : 'border-slate-200 bg-white text-slate-700 hover:border-indigo-300'}`}
+              className={`w-full text-left rounded-xl border-2 px-4 py-3.5 text-sm font-medium transition-all ${answers[q.id] === oi ? 'border-[#FF5C38] bg-[#FF5C38]/10 text-[#FF8A6B] shadow-md shadow-black/30' : 'border-white/10 bg-[#12172A] text-slate-300 hover:border-[#FF5C38]/40'}`}
             >
-              <span className={`inline-flex w-7 h-7 rounded-lg items-center justify-center text-xs font-bold mr-3 ${answers[q.id] === oi ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+              <span className={`inline-flex w-7 h-7 rounded-lg items-center justify-center text-xs font-bold mr-3 ${answers[q.id] === oi ? 'bg-[#FF5C38] text-white' : 'bg-[#151B30] text-slate-400'}`}>
                 {String.fromCharCode(65 + oi)}
               </span>
               {opt}

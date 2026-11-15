@@ -27,13 +27,13 @@ export default function OfferLetter() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
-  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading letter…</div>;
-  if (!offer) return <div className="text-sm text-slate-500 py-10 text-center">Offer letter not found.</div>;
+  if (loading) return <div className="text-sm text-slate-400 py-10 text-center">Loading letter…</div>;
+  if (!offer) return <div className="text-sm text-slate-400 py-10 text-center">Offer letter not found.</div>;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3 flex-wrap print:hidden">
-        <Link to={`/recruiter/drives/${offer.drive_id}`} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800">← Back to drive</Link>
+        <Link to={`/recruiter/drives/${offer.drive_id}`} className="text-sm font-semibold text-[#FF5C38] hover:text-[#FF8A6B]">← Back to drive</Link>
         <button onClick={() => window.print()} className="cf-btn-primary">Print / save as PDF</button>
       </div>
 

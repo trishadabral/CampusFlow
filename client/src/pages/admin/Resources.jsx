@@ -107,7 +107,7 @@ export default function Resources() {
     }
   };
 
-  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading resources…</div>;
+  if (loading) return <div className="text-sm text-slate-400 py-10 text-center">Loading resources…</div>;
 
   const grouped = resources.reduce((m, r) => {
     const t = r.type ?? 'other';
@@ -132,7 +132,7 @@ export default function Resources() {
         </div>
 
         {showAdd && (
-          <form onSubmit={addResource} className="mt-4 p-5 bg-indigo-50/60 border border-indigo-100 rounded-2xl grid grid-cols-1 md:grid-cols-5 gap-3 cf-rise">
+          <form onSubmit={addResource} className="mt-4 p-5 bg-[#FF5C38]/10 border border-[#FF5C38]/25 rounded-2xl grid grid-cols-1 md:grid-cols-5 gap-3 cf-rise">
             <div className="md:col-span-2">
               <label className="cf-label">Name</label>
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="e.g. Lab C" className="cf-input" />
@@ -155,7 +155,7 @@ export default function Resources() {
             </div>
             <div className="md:col-span-5 flex items-center gap-3">
               <button type="submit" disabled={saving} className="cf-btn-primary !py-2">{saving ? 'Adding…' : 'Add to inventory'}</button>
-              <span className="text-xs text-slate-500">{TYPE_HINT[form.type]}</span>
+              <span className="text-xs text-slate-400">{TYPE_HINT[form.type]}</span>
             </div>
           </form>
         )}
@@ -167,18 +167,18 @@ export default function Resources() {
             Object.entries(grouped).map(([type, list]) => (
               <div key={type}>
                 <div className="flex items-center gap-2 mb-2">
-                  <h3 className="text-sm font-bold text-slate-700">{titleCase(type)}s</h3>
+                  <h3 className="text-sm font-bold text-slate-300">{titleCase(type)}s</h3>
                   <Badge variant={TYPE_BADGE[type] ?? 'neutral'}>{list.length}</Badge>
                 </div>
                 <p className="text-xs text-slate-400 mb-2">{TYPE_HINT[type]}</p>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   {list.map((r) => (
-                    <div key={r.id} className="border border-slate-200 rounded-xl px-4 py-3.5 hover:border-indigo-200 hover:shadow-sm transition-all">
+                    <div key={r.id} className="border border-white/10 rounded-xl px-4 py-3.5 hover:border-[#FF5C38]/30 hover:shadow-sm transition-all">
                       <div className="flex items-center justify-between">
-                        <div className="font-bold text-slate-900">{r.name}</div>
+                        <div className="font-bold text-slate-100">{r.name}</div>
                         <Badge variant={r.status === 'available' ? 'success' : 'warning'}>{r.status ?? 'available'}</Badge>
                       </div>
-                      <div className="text-xs text-slate-500 mt-1">
+                      <div className="text-xs text-slate-400 mt-1">
                         {type === 'lab' ? `${r.capacity} seats` : type === 'room' ? '1 room' : `Capacity ${r.capacity}`}{r.location ? ` · ${r.location}` : ''}
                       </div>
                     </div>
@@ -197,16 +197,16 @@ export default function Resources() {
           Live status reported by the lab agent running on each machine. Test sessions prefer labs with free machines.
         </p>
         {machines === null ? (
-          <p className="text-sm text-slate-500">Checking for lab reports…</p>
+          <p className="text-sm text-slate-400">Checking for lab reports…</p>
         ) : machines.length === 0 ? (
-          <p className="text-sm text-slate-500">No lab reports yet — run the lab agent to see live machine status.</p>
+          <p className="text-sm text-slate-400">No lab reports yet — run the lab agent to see live machine status.</p>
         ) : (
           <ul className="space-y-2">
             {machines.map((m) => (
-              <li key={m.id} className="border border-slate-100 rounded-xl px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+              <li key={m.id} className="border border-white/10 rounded-xl px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <span className="font-medium text-slate-900">{m.machine_name}</span>
-                  <div className="text-xs text-slate-500 mt-0.5">
+                  <span className="font-medium text-slate-100">{m.machine_name}</span>
+                  <div className="text-xs text-slate-400 mt-0.5">
                     {m.lab_name ?? 'Unknown lab'}{m.last_seen ? ` · last seen ${timeAgo(m.last_seen)}` : ''}
                   </div>
                 </div>
@@ -254,22 +254,22 @@ export default function Resources() {
           </div>
         </form>
         {verdict && (
-          <div className={`mt-4 rounded-xl px-4 py-3 text-sm border ${verdict.ok ? 'bg-emerald-50 border-emerald-200 text-emerald-800' : 'bg-amber-50 border-amber-200 text-amber-900'}`}>
+          <div className={`mt-4 rounded-xl px-4 py-3 text-sm border ${verdict.ok ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-amber-500/10 border-amber-500/30 text-amber-300'}`}>
             <div className="font-semibold">{verdict.message}</div>
             {verdict.explanation && <p className="mt-1 text-[13px]">{verdict.explanation}</p>}
           </div>
         )}
         <div className="cf-divider" />
-        <h3 className="text-sm font-bold text-slate-700 mb-3">Booking board</h3>
+        <h3 className="text-sm font-bold text-slate-300 mb-3">Booking board</h3>
         {allocs.length === 0 ? (
-          <p className="text-sm text-slate-500">No manual bookings yet.</p>
+          <p className="text-sm text-slate-400">No manual bookings yet.</p>
         ) : (
           <ul className="space-y-2">
             {allocs.map((a) => (
-              <li key={a.id} className="border border-slate-100 rounded-xl px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
+              <li key={a.id} className="border border-white/10 rounded-xl px-4 py-3 flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <span className="font-medium text-slate-900">{a.purpose}</span>
-                  <div className="text-xs text-slate-500 mt-0.5">
+                  <span className="font-medium text-slate-100">{a.purpose}</span>
+                  <div className="text-xs text-slate-400 mt-0.5">
                     {a.resource?.name ?? 'Resource'} · {formatDate(a.starts_at)} → {formatDate(a.ends_at)}
                   </div>
                 </div>

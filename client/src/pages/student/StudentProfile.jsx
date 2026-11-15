@@ -127,17 +127,17 @@ export default function StudentProfile() {
     }
   };
 
-  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading your profile…</div>;
-  if (!profile) return <div className="text-sm text-slate-500 py-10 text-center">Your profile could not be loaded.</div>;
+  if (loading) return <div className="text-sm text-slate-400 py-10 text-center">Loading your profile…</div>;
+  if (!profile) return <div className="text-sm text-slate-400 py-10 text-center">Your profile could not be loaded.</div>;
 
-  const inputCls = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500';
+  const inputCls = 'w-full rounded-xl border border-white/10 bg-[#12172A] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400';
 
   return (
     <div className="space-y-6 max-w-3xl">
       <div className="cf-hero cf-rise">
         <div className="relative z-10">
-          <h2 className="text-2xl font-bold">My profile</h2>
-          <p className="text-indigo-100 text-sm mt-1">
+          <h2 className="font-display text-2xl font-bold">My profile</h2>
+          <p className="text-cyan-100 text-sm mt-1">
             Recruiters see this when they look at your applications. Keep it up to date.
           </p>
         </div>
@@ -147,15 +147,15 @@ export default function StudentProfile() {
         {/* Photo */}
         <div className="flex items-center gap-5">
           {photo ? (
-            <img src={photo} alt="Your profile photo" className="w-20 h-20 rounded-2xl object-cover border border-slate-200" />
+            <img src={photo} alt="Your profile photo" className="w-20 h-20 rounded-2xl object-cover border border-white/10" />
           ) : (
-            <div className="w-20 h-20 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center text-2xl font-bold">
+            <div className="w-20 h-20 rounded-2xl bg-[#FF5C38]/15 text-[#FF5C38] flex items-center justify-center font-display text-2xl font-bold">
               {(name || '?').charAt(0).toUpperCase()}
             </div>
           )}
           <div>
-            <div className="font-semibold text-slate-900 text-sm">Profile photo</div>
-            <p className="text-xs text-slate-500 mt-0.5">JPG or PNG, smaller than 2 MB.</p>
+            <div className="font-semibold text-slate-100 text-sm">Profile photo</div>
+            <p className="text-xs text-slate-400 mt-0.5">JPG or PNG, smaller than 2 MB.</p>
             <div className="flex gap-2 mt-2">
               <button type="button" onClick={() => photoInput.current?.click()} className="cf-btn-secondary !py-1.5 !px-3 text-xs">
                 {photo ? 'Change photo' : 'Add a photo'}
@@ -164,7 +164,7 @@ export default function StudentProfile() {
                 <button
                   type="button"
                   onClick={() => { setPhoto(null); setPhotoChanged(true); }}
-                  className="text-xs font-medium text-rose-600 hover:text-rose-700 px-2 py-1.5"
+                  className="text-xs font-medium text-rose-400 hover:text-rose-300 px-2 py-1.5"
                 >
                   Remove
                 </button>
@@ -180,31 +180,31 @@ export default function StudentProfile() {
         {/* Name + email */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Full name</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Full name</label>
             <input type="text" value={name} onChange={(e) => setName(e.target.value)} className={inputCls} />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
-            <input type="email" value={profile.email ?? ''} disabled className={`${inputCls} bg-slate-50 text-slate-500`} />
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
+            <input type="email" value={profile.email ?? ''} disabled className={`${inputCls} bg-[#0B0E1A] text-slate-400`} />
           </div>
         </div>
 
         {/* Academic record (read-only) */}
         <div>
-          <div className="text-sm font-medium text-slate-700 mb-1.5">Your academic record</div>
+          <div className="text-sm font-medium text-slate-300 mb-1.5">Your academic record</div>
           <div className="flex flex-wrap gap-2">
-            <span className="cf-chip bg-slate-100 text-slate-600">Roll no. {profile.roll_no}</span>
-            <span className="cf-chip bg-slate-100 text-slate-600">{profile.branch}</span>
-            <span className="cf-chip bg-slate-100 text-slate-600">CGPA {profile.cgpa}</span>
-            <span className="cf-chip bg-slate-100 text-slate-600">{profile.backlogs ?? 0} backlogs</span>
-            <span className="cf-chip bg-slate-100 text-slate-600">Class of {profile.graduation_year}</span>
+            <span className="cf-chip bg-[#151B30] text-slate-400">Roll no. {profile.roll_no}</span>
+            <span className="cf-chip bg-[#151B30] text-slate-400">{profile.branch}</span>
+            <span className="cf-chip bg-[#151B30] text-slate-400">CGPA {profile.cgpa}</span>
+            <span className="cf-chip bg-[#151B30] text-slate-400">{profile.backlogs ?? 0} backlogs</span>
+            <span className="cf-chip bg-[#151B30] text-slate-400">Class of {profile.graduation_year}</span>
           </div>
           <p className="text-xs text-slate-400 mt-1.5">These come from your admission record — ask the placement office if anything looks wrong.</p>
         </div>
 
         {/* Skills */}
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1.5">Skills</label>
+          <label className="block text-sm font-medium text-slate-300 mb-1.5">Skills</label>
           <input
             type="text" value={skills} onChange={(e) => setSkills(e.target.value)}
             placeholder="e.g. Java, SQL, communication"
@@ -215,25 +215,25 @@ export default function StudentProfile() {
 
         {/* Resume */}
         <div>
-          <div className="text-sm font-medium text-slate-700 mb-1.5">Resume</div>
+          <div className="text-sm font-medium text-slate-300 mb-1.5">Resume</div>
           {resumeName ? (
             <div className="flex items-center gap-3 flex-wrap">
-              <span className="cf-chip bg-emerald-50 text-emerald-700">📄 {resumeName}</span>
+              <span className="cf-chip bg-emerald-500/10 text-emerald-300">📄 {resumeName}</span>
               {!resumeChanged && (
-                <button type="button" onClick={downloadResume} className="text-xs font-semibold text-indigo-600 hover:text-indigo-800">
+                <button type="button" onClick={downloadResume} className="text-xs font-semibold text-[#FF5C38] hover:text-[#FF8A6B]">
                   Download
                 </button>
               )}
               <button
                 type="button"
                 onClick={() => { setResumeData(null); setResumeName(null); setResumeChanged(true); }}
-                className="text-xs font-medium text-rose-600 hover:text-rose-700"
+                className="text-xs font-medium text-rose-400 hover:text-rose-300"
               >
                 Remove
               </button>
             </div>
           ) : (
-            <p className="text-sm text-slate-500">No resume uploaded yet.</p>
+            <p className="text-sm text-slate-400">No resume uploaded yet.</p>
           )}
           <button type="button" onClick={() => resumeInput.current?.click()} className="cf-btn-secondary !py-2 mt-3">
             {resumeName ? 'Replace with a new PDF' : 'Upload your resume (PDF, up to 5 MB)'}
@@ -243,11 +243,11 @@ export default function StudentProfile() {
             onChange={(e) => { pickResume(e.target.files?.[0]); e.target.value = ''; }}
           />
           {resumeChanged && resumeName && (
-            <p className="text-xs text-amber-600 mt-2">New file picked — save below to upload it.</p>
+            <p className="text-xs text-amber-400 mt-2">New file picked — save below to upload it.</p>
           )}
         </div>
 
-        <div className="pt-2 border-t border-slate-100">
+        <div className="pt-2 border-t border-white/10">
           <button type="submit" disabled={saving} className="cf-btn-primary disabled:opacity-60">
             {saving ? 'Saving…' : 'Save profile'}
           </button>

@@ -150,15 +150,15 @@ export default function ResourceCalendar() {
     if (ev) moveEvent(ev, day, hour);
   };
 
-  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading calendar…</div>;
+  if (loading) return <div className="text-sm text-slate-400 py-10 text-center">Loading calendar…</div>;
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+      <div className="bg-[#12172A] rounded-2xl shadow-sm border border-white/10 p-6">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div>
-            <h2 className="font-semibold text-slate-900">Room calendar</h2>
-            <p className="text-xs text-slate-500 mt-1">
+            <h2 className="font-semibold text-slate-100">Room calendar</h2>
+            <p className="text-xs text-slate-400 mt-1">
               Week of {fmtDay(days[0])} – {fmtDay(days[6])}. Click an empty slot to add a booking; drag a hand-added booking to move it. Sessions from drives can't be moved here.
             </p>
           </div>
@@ -181,7 +181,7 @@ export default function ResourceCalendar() {
         </div>
 
         {form && (
-          <form onSubmit={saveForm} className="mt-4 p-5 bg-indigo-50/60 border border-indigo-100 rounded-2xl grid grid-cols-1 md:grid-cols-4 gap-3">
+          <form onSubmit={saveForm} className="mt-4 p-5 bg-[#FF5C38]/10 border border-[#FF5C38]/25 rounded-2xl grid grid-cols-1 md:grid-cols-4 gap-3">
             <div className="md:col-span-2">
               <label className="cf-label">Title</label>
               <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="e.g. Workshop — Batch A" className="cf-input" />
@@ -216,7 +216,7 @@ export default function ResourceCalendar() {
             <div className="min-w-[900px] grid" style={{ gridTemplateColumns: '56px repeat(7, minmax(0, 1fr))' }}>
               <div />
               {days.map((d) => (
-                <div key={dateKey(d)} className="px-2 py-2 text-center text-xs font-bold text-slate-700 border-b border-slate-200">
+                <div key={dateKey(d)} className="px-2 py-2 text-center text-xs font-bold text-slate-300 border-b border-white/10">
                   {fmtDay(d)}
                 </div>
               ))}
@@ -230,7 +230,7 @@ export default function ResourceCalendar() {
                     return (
                       <div
                         key={`${dateKey(day)}-${hour}`}
-                        className="relative border-t border-l border-slate-100 hover:bg-indigo-50/50 cursor-pointer"
+                        className="relative border-t border-l border-white/10 hover:bg-[#FF5C38]/10 cursor-pointer"
                         style={{ height: `${ROW_REM}rem` }}
                         onClick={() => openForm(day, hour)}
                         onDragOver={(e) => e.preventDefault()}
@@ -255,10 +255,10 @@ export default function ResourceCalendar() {
                               title={ev.kind === 'manual' ? 'Hand-added booking — drag to move' : 'Session from a drive — cannot be moved here'}
                               className={`absolute left-1 right-1 rounded-lg px-2 py-1 text-[11px] leading-tight overflow-hidden z-10 ${
                                 ev.kind === 'manual'
-                                  ? 'bg-amber-100 border border-amber-300 text-amber-900 cursor-move'
+                                  ? 'bg-amber-100 border border-amber-500/40 text-amber-300 cursor-move'
                                   : full
-                                    ? 'bg-rose-100 border border-rose-300 text-rose-900'
-                                    : 'bg-indigo-100 border border-indigo-300 text-indigo-900'
+                                    ? 'bg-rose-100 border border-rose-500/40 text-rose-300'
+                                    : 'bg-[#FF5C38]/15 border border-[#FF5C38]/40 text-[#FF8A6B]'
                               }`}
                               style={{ top: `${topRem}rem`, height: `${heightRem - 0.15}rem` }}
                             >
@@ -271,7 +271,7 @@ export default function ResourceCalendar() {
                               {ev.kind === 'manual' && (
                                 <button
                                   onClick={(e) => { e.stopPropagation(); deleteEvent(ev); }}
-                                  className="absolute top-0.5 right-1 font-bold text-amber-700 hover:text-rose-600"
+                                  className="absolute top-0.5 right-1 font-bold text-amber-300 hover:text-rose-400"
                                   title="Remove this booking"
                                 >
                                   ×

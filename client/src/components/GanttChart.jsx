@@ -2,8 +2,8 @@
 // Renders schedule segments as proportional horizontal bars with labels.
 
 const PALETTE = [
-  'bg-indigo-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500',
-  'bg-sky-500', 'bg-violet-500', 'bg-orange-500', 'bg-teal-500',
+  'bg-[#FF5C38]', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500',
+  'bg-sky-500', 'bg-cyan-400', 'bg-orange-500', 'bg-teal-500',
 ];
 
 export default function GanttChart({ gantt = [] }) {
@@ -13,7 +13,7 @@ export default function GanttChart({ gantt = [] }) {
 
   return (
     <div>
-      <div className="relative h-14 bg-slate-50 rounded-xl border border-slate-100 overflow-hidden">
+      <div className="relative h-14 bg-[#0B0E1A] rounded-xl border border-white/10 overflow-hidden">
         {gantt.map((g, i) => {
           const left = (g.start / total) * 100;
           const width = Math.max(((g.end - g.start) / total) * 100, 0.5);

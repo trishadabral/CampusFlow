@@ -45,7 +45,7 @@ export default function MyBookings() {
     }
   };
 
-  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading your schedule…</div>;
+  if (loading) return <div className="text-sm text-slate-400 py-10 text-center">Loading your schedule…</div>;
 
   const waiting = items.filter((b) => b.status === 'waitlist');
   const upcoming = items.filter((b) => b.status === 'confirmed' && new Date(b.slot.starts_at).getTime() >= Date.now());
@@ -53,14 +53,14 @@ export default function MyBookings() {
 
   const card = (b, i) => (
     <div key={b.id} className={`cf-card cf-rise cf-rise-${i % 3} !p-5 flex items-center gap-4`}>
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 ${b.slot.type === 'test' ? 'bg-indigo-100' : 'bg-emerald-100'}`}>
+      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-xl shrink-0 ${b.slot.type === 'test' ? 'bg-[#FF5C38]/15' : 'bg-emerald-500/15'}`}>
         {b.slot.type === 'test' ? '📝' : '🎤'}
       </div>
       <div className="min-w-0 flex-1">
-        <div className="font-bold text-slate-900 truncate">{b.slot.title}</div>
-        <div className="text-sm text-slate-500">{formatDate(b.slot.starts_at)} → {formatDate(b.slot.ends_at)}</div>
+        <div className="font-bold text-slate-100 truncate">{b.slot.title}</div>
+        <div className="text-sm text-slate-400">{formatDate(b.slot.starts_at)} → {formatDate(b.slot.ends_at)}</div>
         {b.status === 'waitlist' && (
-          <div className="text-sm text-amber-700 mt-1">
+          <div className="text-sm text-amber-300 mt-1">
             You're #{b.waitlist_position ?? '—'} in line for this session — we'll let you know if a seat opens up.
           </div>
         )}
@@ -70,18 +70,18 @@ export default function MyBookings() {
           {b.status === 'waitlist' ? 'Waiting list' : b.slot.type}
         </Badge>
         {b.status === 'waitlist' ? (
-          <button onClick={() => cancelBooking(b, true)} className="block text-xs font-bold text-rose-600 hover:text-rose-800 mt-1.5">
+          <button onClick={() => cancelBooking(b, true)} className="block text-xs font-bold text-rose-400 hover:text-rose-300 mt-1.5">
             Leave the line
           </button>
         ) : (
           <>
             {b.slot.type === 'test' && new Date(b.slot.starts_at).getTime() >= Date.now() && (
-              <Link to={`/student/tests/${b.slot.drive_id}`} className="block text-xs font-bold text-indigo-600 hover:text-indigo-800 mt-1.5">
+              <Link to={`/student/tests/${b.slot.drive_id}`} className="block text-xs font-bold text-[#FF5C38] hover:text-[#FF8A6B] mt-1.5">
                 Take test →
               </Link>
             )}
             {new Date(b.slot.starts_at).getTime() >= Date.now() && (
-              <button onClick={() => cancelBooking(b, false)} className="block text-xs font-bold text-rose-600 hover:text-rose-800 mt-1.5">
+              <button onClick={() => cancelBooking(b, false)} className="block text-xs font-bold text-rose-400 hover:text-rose-300 mt-1.5">
                 Cancel booking
               </button>
             )}

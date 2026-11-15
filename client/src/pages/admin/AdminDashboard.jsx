@@ -64,7 +64,7 @@ export default function AdminDashboard() {
     }
   };
 
-  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading control center…</div>;
+  if (loading) return <div className="text-sm text-slate-400 py-10 text-center">Loading control center…</div>;
 
   const totals = drives.reduce((m, d) => ({
     applied: m.applied + d.applied,
@@ -79,8 +79,8 @@ export default function AdminDashboard() {
     <div className="space-y-6">
       <div className="cf-hero cf-rise">
         <div className="relative z-10">
-          <h2 className="text-2xl font-bold">Control center</h2>
-          <p className="text-indigo-100 text-sm mt-1">
+          <h2 className="font-display text-2xl font-bold">Control center</h2>
+          <p className="text-cyan-100 text-sm mt-1">
             Every drive's pipeline, every test session, every interview — scheduled by the system, overseen by you.
           </p>
           <div className="flex gap-6 mt-4">
@@ -92,7 +92,7 @@ export default function AdminDashboard() {
             ].map(([v, l]) => (
               <div key={l}>
                 <div className="text-2xl font-black">{v}</div>
-                <div className="text-xs text-indigo-200 font-medium">{l}</div>
+                <div className="text-xs text-cyan-200 font-medium">{l}</div>
               </div>
             ))}
           </div>
@@ -103,7 +103,7 @@ export default function AdminDashboard() {
       <div className="cf-card cf-rise !p-2">
         <div className="px-5 pt-4 pb-2 flex items-center justify-between">
           <h3 className="cf-section-title">All drives</h3>
-          <Link to="/admin/resources" className="text-sm font-semibold text-indigo-600 hover:text-indigo-800">Manage resources →</Link>
+          <Link to="/admin/resources" className="text-sm font-semibold text-[#FF5C38] hover:text-[#FF8A6B]">Manage resources →</Link>
         </div>
         {drives.length === 0 ? (
           <EmptyState title="No drives yet" message="Drives appear here once recruiters publish them." />
@@ -111,12 +111,12 @@ export default function AdminDashboard() {
           <DataTable
             columns={[
               { key: 'drive', label: 'Drive', render: (d) => (
-                <span className="font-semibold text-slate-900">{d.title}<span className="block text-xs font-normal text-slate-400">{d.company}</span></span>
+                <span className="font-semibold text-slate-100">{d.title}<span className="block text-xs font-normal text-slate-400">{d.company}</span></span>
               )},
               { key: 'stage', label: 'Stage', render: (d) => <Badge variant={STAGE_META[d.stage]?.variant ?? 'neutral'}>{STAGE_META[d.stage]?.label ?? d.stage}</Badge> },
               { key: 'progress', label: 'Progress', render: (d) => (
-                <span className="text-[13px] text-slate-600 whitespace-nowrap">
-                  <b className="text-slate-900">{d.applied}</b> applied → <b className="text-slate-900">{d.tests_taken}</b> tested → <b className="text-slate-900">{d.shortlisted}</b> shortlisted
+                <span className="text-[13px] text-slate-400 whitespace-nowrap">
+                  <b className="text-slate-100">{d.applied}</b> applied → <b className="text-slate-100">{d.tests_taken}</b> tested → <b className="text-slate-100">{d.shortlisted}</b> shortlisted
                 </span>
               )},
               { key: 'sessions', label: 'Scheduled', render: (d) => <span className="text-[13px]">{d.test_sessions} tests · {d.interview_slots} interviews</span> },
@@ -148,23 +148,23 @@ export default function AdminDashboard() {
             <h3 className="cf-section-title">Full schedule</h3>
             <p className="cf-section-sub">Every upcoming test & interview session, across all drives.</p>
           </div>
-          <Link to="/admin/resources" className="text-sm font-semibold text-indigo-600 hover:text-indigo-800">Resources →</Link>
+          <Link to="/admin/resources" className="text-sm font-semibold text-[#FF5C38] hover:text-[#FF8A6B]">Resources →</Link>
         </div>
         {upcomingSessions.length === 0 ? (
-          <p className="text-sm text-slate-500">No sessions scheduled yet.</p>
+          <p className="text-sm text-slate-400">No sessions scheduled yet.</p>
         ) : (
           <ul className="space-y-2">
             {upcomingSessions.map((s) => (
-              <li key={s.id} className="border border-slate-100 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
-                <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${s.type === 'test' ? 'bg-indigo-100' : 'bg-emerald-100'}`}>
+              <li key={s.id} className="border border-white/10 rounded-xl px-4 py-3 flex items-center gap-4 flex-wrap">
+                <span className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg shrink-0 ${s.type === 'test' ? 'bg-[#FF5C38]/15' : 'bg-emerald-500/15'}`}>
                   {s.type === 'test' ? '📝' : '🎤'}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="font-semibold text-slate-900 text-sm truncate">{s.title}</div>
-                  <div className="text-xs text-slate-500">{s.drive_title} · {s.company_name}</div>
+                  <div className="font-semibold text-slate-100 text-sm truncate">{s.title}</div>
+                  <div className="text-xs text-slate-400">{s.drive_title} · {s.company_name}</div>
                 </div>
-                <div className="text-right text-xs text-slate-500">
-                  <div className="font-semibold text-slate-700">{formatDate(s.starts_at)}</div>
+                <div className="text-right text-xs text-slate-400">
+                  <div className="font-semibold text-slate-300">{formatDate(s.starts_at)}</div>
                   <div>{s.venue ?? 'TBA'} · {s.booked_count}/{s.capacity} seats</div>
                 </div>
               </li>

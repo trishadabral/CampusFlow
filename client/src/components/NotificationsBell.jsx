@@ -63,7 +63,7 @@ export default function NotificationsBell() {
     <div className="relative" ref={boxRef}>
       <button
         onClick={() => { setOpen((o) => !o); if (!open) load(false); }}
-        className="relative w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:border-indigo-300 transition-colors"
+        className="relative w-10 h-10 rounded-xl bg-[#12172A] border border-white/10 flex items-center justify-center text-slate-400 hover:text-[#FF5C38] hover:border-[#FF5C38]/40 transition-colors"
         aria-label="Notifications"
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -77,11 +77,11 @@ export default function NotificationsBell() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-[380px] max-w-[90vw] bg-white rounded-2xl border border-slate-200 shadow-xl z-50 overflow-hidden cf-rise">
-          <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
-            <span className="font-bold text-slate-900 text-sm">Notifications</span>
+        <div className="absolute right-0 mt-2 w-[380px] max-w-[90vw] bg-[#12172A] rounded-2xl border border-white/10 shadow-xl z-50 overflow-hidden cf-rise">
+          <div className="flex items-center justify-between px-5 py-3.5 border-b border-white/10">
+            <span className="font-bold text-slate-100 text-sm">Notifications</span>
             {unread > 0 && (
-              <button onClick={markAllRead} className="text-xs font-semibold text-indigo-600 hover:text-indigo-700">
+              <button onClick={markAllRead} className="text-xs font-semibold text-[#FF5C38] hover:text-[#FF5C38]">
                 Mark all read
               </button>
             )}
@@ -90,7 +90,7 @@ export default function NotificationsBell() {
             {items.length === 0 ? (
               <div className="px-5 py-10 text-center">
                 <div className="text-3xl mb-2">🔕</div>
-                <p className="text-sm text-slate-500">Nothing yet. Test sessions, results and interview schedules will land here.</p>
+                <p className="text-sm text-slate-400">Nothing yet. Test sessions, results and interview schedules will land here.</p>
               </div>
             ) : (
               items.map((n) => (
@@ -98,13 +98,13 @@ export default function NotificationsBell() {
                   key={n.id}
                   to={n.link || '#'}
                   onClick={() => { markOneRead(n); setOpen(false); }}
-                  className={`block px-5 py-3.5 border-b border-slate-50 hover:bg-indigo-50/40 transition-colors ${!n.is_read ? 'bg-indigo-50/60' : ''}`}
+                  className={`block px-5 py-3.5 border-b border-white/10 hover:bg-[#FF5C38]/10 transition-colors ${!n.is_read ? 'bg-[#FF5C38]/10' : ''}`}
                 >
                   <div className="flex items-start gap-2.5">
-                    {!n.is_read && <span className="w-2 h-2 rounded-full bg-indigo-500 mt-1.5 shrink-0" />}
+                    {!n.is_read && <span className="w-2 h-2 rounded-full bg-[#FF5C38] mt-1.5 shrink-0" />}
                     <div className="min-w-0">
-                      <div className="text-sm font-semibold text-slate-900">{n.title}</div>
-                      {n.body && <div className="text-[13px] text-slate-500 mt-0.5 leading-snug">{n.body}</div>}
+                      <div className="text-sm font-semibold text-slate-100">{n.title}</div>
+                      {n.body && <div className="text-[13px] text-slate-400 mt-0.5 leading-snug">{n.body}</div>}
                       <div className="text-[11px] text-slate-400 mt-1">{timeAgo(n.created_at)}</div>
                     </div>
                   </div>

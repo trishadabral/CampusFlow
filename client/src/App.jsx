@@ -33,7 +33,7 @@ const HOME = { admin: '/admin', recruiter: '/recruiter', student: '/student' };
 
 function ProtectedRoute({ role, children }) {
   const { user, ready } = useAuth();
-  if (!ready) return <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">Loading…</div>;
+  if (!ready) return <div className="min-h-screen flex items-center justify-center text-sm text-slate-400">Loading…</div>;
   if (!user) return <Navigate to="/login" replace />;
   if (role && user.role !== role) return <Navigate to={HOME[user.role] ?? '/student'} replace />;
   return children;
@@ -41,7 +41,7 @@ function ProtectedRoute({ role, children }) {
 
 function RoleRedirect() {
   const { user, ready } = useAuth();
-  if (!ready) return <div className="min-h-screen flex items-center justify-center text-sm text-slate-500">Loading…</div>;
+  if (!ready) return <div className="min-h-screen flex items-center justify-center text-sm text-slate-400">Loading…</div>;
   return <Navigate to={user ? HOME[user.role] ?? '/student' : '/login'} replace />;
 }
 

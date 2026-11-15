@@ -42,8 +42,8 @@ export default function ResetPassword() {
     return (
       <div className="min-h-screen flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          <h1 className="text-2xl font-bold text-slate-900">This link isn’t complete</h1>
-          <p className="text-sm text-slate-500 mt-2 leading-relaxed">
+          <h1 className="font-display text-2xl font-bold text-slate-100">This link isn’t complete</h1>
+          <p className="text-sm text-slate-400 mt-2 leading-relaxed">
             The reset link is missing its code. Please use the full link from your email,
             or request a new one.
           </p>
@@ -56,37 +56,37 @@ export default function ResetPassword() {
   return (
     <div className="min-h-screen flex items-center justify-center p-8">
       <div className="w-full max-w-md">
-        <h1 className="text-2xl font-bold text-slate-900">Choose a new password</h1>
-        <p className="text-sm text-slate-500 mt-1 mb-8">
+        <h1 className="font-display text-2xl font-bold text-slate-100">Choose a new password</h1>
+        <p className="text-sm text-slate-400 mt-1 mb-8">
           At least 8 characters. This link works once — after you save, it stops working.
         </p>
 
         <form onSubmit={submit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">New password</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">New password</label>
             <input
               type="password" value={password} onChange={(e) => setPassword(e.target.value)}
               placeholder="At least 8 characters"
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full rounded-xl border border-white/10 bg-[#12172A] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1.5">Type it again</label>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Type it again</label>
             <input
               type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)}
               placeholder="Repeat your new password"
-              className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full rounded-xl border border-white/10 bg-[#12172A] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
             />
           </div>
           <button
             type="submit" disabled={busy}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
+            className="w-full bg-[#FF5C38] hover:bg-[#E8492B] disabled:opacity-60 text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
           >
             {busy ? 'Saving…' : 'Save new password'}
           </button>
         </form>
 
-        <Link to="/login" className="block text-sm font-medium text-indigo-600 hover:text-indigo-800 mt-6">
+        <Link to="/login" className="block text-sm font-medium text-[#FF5C38] hover:text-[#FF8A6B] mt-6">
           ← Back to sign in
         </Link>
       </div>

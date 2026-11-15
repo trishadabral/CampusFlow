@@ -34,17 +34,17 @@ export default function ForgotPassword() {
   return (
     <div className="min-h-screen flex items-center justify-center p-8">
       <div className="w-full max-w-md">
-        <h1 className="text-2xl font-bold text-slate-900">Forgot your password?</h1>
-        <p className="text-sm text-slate-500 mt-1 mb-8">
+        <h1 className="font-display text-2xl font-bold text-slate-100">Forgot your password?</h1>
+        <p className="text-sm text-slate-400 mt-1 mb-8">
           Enter the email you signed up with and we’ll send you a link to choose a new password.
         </p>
 
         {sent ? (
           <div className="cf-card">
             <div className="text-3xl mb-2">✉️</div>
-            <p className="font-semibold text-slate-900">Check your inbox</p>
-            <p className="text-sm text-slate-500 mt-1 leading-relaxed">
-              If an account exists for <span className="font-medium text-slate-700">{email}</span>, a
+            <p className="font-semibold text-slate-100">Check your inbox</p>
+            <p className="text-sm text-slate-400 mt-1 leading-relaxed">
+              If an account exists for <span className="font-medium text-slate-300">{email}</span>, a
               reset link is on its way. The link works for 1 hour and can only be used once.
               Didn’t get it? Check your spam folder, or try again.
             </p>
@@ -53,23 +53,23 @@ export default function ForgotPassword() {
         ) : (
           <form onSubmit={submit} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
+              <label className="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
               <input
                 type="email" value={email} onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@college.edu"
-                className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full rounded-xl border border-white/10 bg-[#12172A] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400"
               />
             </div>
             <button
               type="submit" disabled={busy}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
+              className="w-full bg-[#FF5C38] hover:bg-[#E8492B] disabled:opacity-60 text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
             >
               {busy ? 'Sending…' : 'Send reset link'}
             </button>
           </form>
         )}
 
-        <Link to="/login" className="block text-sm font-medium text-indigo-600 hover:text-indigo-800 mt-6">
+        <Link to="/login" className="block text-sm font-medium text-[#FF5C38] hover:text-[#FF8A6B] mt-6">
           ← Back to sign in
         </Link>
       </div>

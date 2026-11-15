@@ -24,12 +24,12 @@ export default function MyDrives() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading…</div>;
+  if (loading) return <div className="text-sm text-slate-400 py-10 text-center">Loading…</div>;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <p className="text-sm text-slate-500">{drives.length} drive{drives.length !== 1 && 's'} total</p>
+        <p className="text-sm text-slate-400">{drives.length} drive{drives.length !== 1 && 's'} total</p>
         <Link to="/recruiter/drives/new" className="cf-btn-primary">Add Drive</Link>
       </div>
       <div className="cf-card !p-2 cf-rise">
@@ -39,7 +39,7 @@ export default function MyDrives() {
           <DataTable
             columns={[
               { key: 'title', label: 'Drive', render: (d) => (
-                <Link to={`/recruiter/drives/${d.id}`} className="font-semibold text-indigo-700 hover:text-indigo-900">
+                <Link to={`/recruiter/drives/${d.id}`} className="font-semibold text-[#FF5C38] hover:text-[#FF8A6B]">
                   {d.title}<span className="block text-xs font-normal text-slate-400">{d.company?.name}</span>
                 </Link>
               )},
@@ -47,10 +47,10 @@ export default function MyDrives() {
               { key: 'applied', label: 'Applied', render: (d) => <span className="font-semibold">{d.counts?.applied ?? 0}</span> },
               { key: 'shortlisted', label: 'Shortlisted', render: (d) => d.counts?.shortlisted ?? 0 },
               { key: 'notes', label: 'Notes needed', render: (d) => (d.feedback_pending ?? 0) > 0
-                ? <span className="font-semibold text-amber-700">{d.feedback_pending}</span>
+                ? <span className="font-semibold text-amber-300">{d.feedback_pending}</span>
                 : <span className="text-slate-400">0</span> },
               { key: 'deadline', label: 'Apply by', render: (d) => formatDate(d.application_deadline).split(',')[0] },
-              { key: 'open', label: '', render: (d) => <Link to={`/recruiter/drives/${d.id}`} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800">Open →</Link> },
+              { key: 'open', label: '', render: (d) => <Link to={`/recruiter/drives/${d.id}`} className="text-sm font-semibold text-[#FF5C38] hover:text-[#FF8A6B]">Open →</Link> },
             ]}
             rows={drives}
           />

@@ -31,11 +31,11 @@ const STATUS_VARIANT = {
 function Bar({ label, value, max, color, suffix = '' }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-slate-500 w-24 shrink-0">{label}</span>
-      <div className="flex-1 h-2.5 bg-slate-100 rounded-full overflow-hidden">
+      <span className="text-xs text-slate-400 w-24 shrink-0">{label}</span>
+      <div className="flex-1 h-2.5 bg-[#151B30] rounded-full overflow-hidden">
         <div className={`h-full rounded-full ${color}`} style={{ width: `${max > 0 ? (value / max) * 100 : 0}%` }} />
       </div>
-      <span className="text-xs font-semibold text-slate-700 w-12 text-right">{value}{suffix}</span>
+      <span className="text-xs font-semibold text-slate-300 w-12 text-right">{value}{suffix}</span>
     </div>
   );
 }
@@ -273,8 +273,8 @@ export default function RecruiterDriveDetail() {
     }
   };
 
-  if (loading) return <div className="text-sm text-slate-500 py-10 text-center">Loading drive…</div>;
-  if (!drive) return <div className="text-sm text-slate-500 py-10 text-center">Drive not found.</div>;
+  if (loading) return <div className="text-sm text-slate-400 py-10 text-center">Loading drive…</div>;
+  if (!drive) return <div className="text-sm text-slate-400 py-10 text-center">Drive not found.</div>;
 
   const stage = pipeline?.stage ?? drive.status;
   const stageIdx = { open: 0, testing: 1, interviews: 2, closed: 3, draft: 0 }[stage] ?? 0;
@@ -294,13 +294,13 @@ export default function RecruiterDriveDetail() {
       <div className="cf-card cf-rise">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <div className="text-sm text-slate-500">{drive.company?.name}</div>
-            <h2 className="text-2xl font-bold text-slate-900">{drive.title}</h2>
+            <div className="text-sm text-slate-400">{drive.company?.name}</div>
+            <h2 className="font-display text-2xl font-bold text-slate-100">{drive.title}</h2>
             <div className="flex gap-2 mt-2 flex-wrap">
               <Badge variant={STAGE_META[stage]?.variant ?? 'neutral'}>{STAGE_META[stage]?.label ?? stage}</Badge>
-              <span className="cf-chip bg-slate-100 text-slate-600">CGPA ≥ {drive.min_cgpa}</span>
-              <span className="cf-chip bg-slate-100 text-slate-600">{(drive.allowed_branches ?? []).join(', ')}</span>
-              <span className="cf-chip bg-slate-100 text-slate-600">≤{drive.max_backlogs} backlogs</span>
+              <span className="cf-chip bg-[#151B30] text-slate-400">CGPA ≥ {drive.min_cgpa}</span>
+              <span className="cf-chip bg-[#151B30] text-slate-400">{(drive.allowed_branches ?? []).join(', ')}</span>
+              <span className="cf-chip bg-[#151B30] text-slate-400">≤{drive.max_backlogs} backlogs</span>
             </div>
           </div>
           <div className="flex gap-2">
@@ -318,7 +318,7 @@ export default function RecruiterDriveDetail() {
         </div>
         <div className="mt-6 max-w-2xl"><Stepper steps={pipeSteps} /></div>
         {stage === 'open' && (pipeline?.questions ?? 0) === 0 && (
-          <div className="mt-4 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-900">
+          <div className="mt-4 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 text-sm text-amber-300">
             No test questions yet — add them before scheduling. (Drives created with the wizard always have them.)
           </div>
         )}
@@ -327,16 +327,16 @@ export default function RecruiterDriveDetail() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         {[
-          ['Applied', pipeline?.applied ?? 0, 'indigo'],
+          ['Applied', pipeline?.applied ?? 0, 'coral'],
           ['Tests taken', pipeline?.tests_taken ?? 0, 'amber'],
-          ['Avg score', pipeline?.avg_score != null ? `${pipeline.avg_score}%` : '—', 'violet'],
+          ['Avg score', pipeline?.avg_score != null ? `${pipeline.avg_score}%` : '—', 'cyan'],
           ['Shortlisted', pipeline?.shortlisted ?? 0, 'emerald'],
           ['Interviews', pipeline?.interviews ?? 0, 'rose'],
         ].map(([label, value, accent], i) => (
           <div key={label} className={`cf-stat cf-rise cf-rise-${i}`}>
             <div>
-              <div className="text-2xl font-bold text-slate-900">{value}</div>
-              <div className="text-xs text-slate-500 font-medium mt-0.5">{label}</div>
+              <div className="font-display text-2xl font-bold text-slate-100">{value}</div>
+              <div className="text-xs text-slate-400 font-medium mt-0.5">{label}</div>
             </div>
           </div>
         ))}
@@ -344,7 +344,7 @@ export default function RecruiterDriveDetail() {
 
       {/* Tabs */}
       <div className="cf-card cf-rise">
-        <div className="flex gap-1 border-b border-slate-100 mb-5">
+        <div className="flex gap-1 border-b border-white/10 mb-5">
           {[
             ['students', `Eligible students (${apps.filter((a) => a.eligible).length})`],
             ['results', 'Results'],
@@ -352,7 +352,7 @@ export default function RecruiterDriveDetail() {
           ].map(([key, label]) => (
             <button
               key={key} onClick={() => setTab(key)}
-              className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${tab === key ? 'border-indigo-600 text-indigo-700' : 'border-transparent text-slate-500 hover:text-slate-800'}`}
+              className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${tab === key ? 'border-[#FF5C38] text-[#FF5C38]' : 'border-transparent text-slate-400 hover:text-slate-200'}`}
             >
               {label}
             </button>
@@ -365,7 +365,7 @@ export default function RecruiterDriveDetail() {
           ) : (
             <DataTable
               columns={[
-                { key: 'student', label: 'Student', render: (a) => <span className="font-medium text-slate-900">{a.student?.name}</span> },
+                { key: 'student', label: 'Student', render: (a) => <span className="font-medium text-slate-100">{a.student?.name}</span> },
                 { key: 'roll', label: 'Roll no', render: (a) => a.student?.roll_no ?? '—' },
                 { key: 'branch', label: 'Branch', render: (a) => a.student?.branch ?? '—' },
                 { key: 'cgpa', label: 'CGPA', render: (a) => a.student?.cgpa ?? '—' },
@@ -373,7 +373,7 @@ export default function RecruiterDriveDetail() {
                 { key: 'status', label: 'Status', render: (a) => <Badge variant={STATUS_VARIANT[a.status] ?? 'neutral'}>{a.status.replace('_', ' ')}</Badge> },
                 {
                   key: 'action', label: '', render: (a) => a.status === 'shortlisted' ? (
-                    <button onClick={() => markSelected(a.student.id, a.student.name)} className="text-xs font-semibold text-emerald-700 hover:text-emerald-800 border border-emerald-200 hover:border-emerald-300 rounded-lg px-3 py-1.5 bg-emerald-50">
+                    <button onClick={() => markSelected(a.student.id, a.student.name)} className="text-xs font-semibold text-emerald-300 hover:text-emerald-300 border border-emerald-500/30 hover:border-emerald-500/40 rounded-lg px-3 py-1.5 bg-emerald-500/10">
                       Select ✓
                     </button>
                   ) : null,
@@ -394,8 +394,8 @@ export default function RecruiterDriveDetail() {
               <DataTable
                 columns={[
                   { key: 'rank', label: '#', render: (a) => <span className="font-bold text-slate-400">{a.rank}</span> },
-                  { key: 'student', label: 'Student', render: (a) => <span className="font-medium text-slate-900">{a.student?.name}</span> },
-                  { key: 'score', label: 'Score', render: (a) => <span className="font-bold text-indigo-700">{Number(a.test_percentage).toFixed(1)}%</span> },
+                  { key: 'student', label: 'Student', render: (a) => <span className="font-medium text-slate-100">{a.student?.name}</span> },
+                  { key: 'score', label: 'Score', render: (a) => <span className="font-bold text-[#FF5C38]">{Number(a.test_percentage).toFixed(1)}%</span> },
                   { key: 'cutoff', label: `Cutoff ${drive.min_test_score}%`, render: (a) => a.test_percentage >= drive.min_test_score ? <Badge variant="success">Above</Badge> : <Badge variant="danger">Below</Badge> },
                   { key: 'status', label: 'Status', render: (a) => <Badge variant={STATUS_VARIANT[a.status] ?? 'neutral'}>{a.status.replace('_', ' ')}</Badge> },
                 ]}
@@ -417,9 +417,9 @@ export default function RecruiterDriveDetail() {
               ['Test duration', `${drive.test_duration_min} min`],
               ['Apply by', formatDate(drive.application_deadline)],
             ].map(([k, v]) => (
-              <div key={k} className="bg-slate-50 rounded-xl px-4 py-3">
-                <div className="text-xs text-slate-500 uppercase tracking-wide font-semibold">{k}</div>
-                <div className="font-bold text-slate-900 mt-0.5">{v}</div>
+              <div key={k} className="bg-[#0B0E1A] rounded-xl px-4 py-3">
+                <div className="text-xs text-slate-400 uppercase tracking-wide font-semibold">{k}</div>
+                <div className="font-bold text-slate-100 mt-0.5">{v}</div>
               </div>
             ))}
           </div>
@@ -431,19 +431,19 @@ export default function RecruiterDriveDetail() {
         <h3 className="cf-section-title">Sessions</h3>
         <p className="cf-section-sub">Test and interview sessions for this drive. Students book a seat from the drive page; a full session puts them on the waiting list.</p>
         {slotsError && (
-          <div className="mt-4 bg-rose-50 border border-rose-200 text-rose-800 text-sm rounded-xl px-4 py-3">
+          <div className="mt-4 bg-rose-500/10 border border-rose-500/30 text-rose-300 text-sm rounded-xl px-4 py-3">
             {slotsError} The list below may be out of date — reload the page to try again.
           </div>
         )}
         {driveSlots.length > 0 && (
           <div className="mt-4 space-y-2">
             {driveSlots.map((s) => (
-              <div key={s.id} className="flex items-center justify-between gap-3 bg-slate-50 rounded-xl px-4 py-3 text-sm flex-wrap">
+              <div key={s.id} className="flex items-center justify-between gap-3 bg-[#0B0E1A] rounded-xl px-4 py-3 text-sm flex-wrap">
                 <div>
-                  <span className="font-bold text-slate-900">{s.title}</span>
-                  <span className="text-slate-500"> · {s.type === 'test' ? 'Test' : 'Interview'} · {formatDate(s.starts_at)}{s.venue ? ` · ${s.venue}` : ''}</span>
+                  <span className="font-bold text-slate-100">{s.title}</span>
+                  <span className="text-slate-400"> · {s.type === 'test' ? 'Test' : 'Interview'} · {formatDate(s.starts_at)}{s.venue ? ` · ${s.venue}` : ''}</span>
                 </div>
-                <span className="text-xs font-semibold text-slate-600">{s.booked_count}/{s.capacity} booked</span>
+                <span className="text-xs font-semibold text-slate-400">{s.booked_count}/{s.capacity} booked</span>
               </div>
             ))}
           </div>
@@ -478,7 +478,7 @@ export default function RecruiterDriveDetail() {
               <option value="">No venue yet</option>
               {venues.map((v) => <option key={v.id} value={v.id}>{v.name} ({v.type}, {v.capacity} seats)</option>)}
             </select>
-            {venuesError && <p className="cf-hint !text-rose-600">{venuesError} You can still add the session without a venue.</p>}
+            {venuesError && <p className="cf-hint !text-rose-400">{venuesError} You can still add the session without a venue.</p>}
           </div>
           <button type="submit" disabled={busy === 'session'} className="cf-btn-primary">
             {busy === 'session' ? 'Adding…' : 'Add session'}
@@ -497,15 +497,15 @@ export default function RecruiterDriveDetail() {
         {rounds.length > 0 && (
           <div className="mt-4 space-y-2">
             {rounds.map((r) => (
-              <div key={r.id} className="flex items-center justify-between gap-3 bg-slate-50 rounded-xl px-4 py-3 text-sm flex-wrap">
+              <div key={r.id} className="flex items-center justify-between gap-3 bg-[#0B0E1A] rounded-xl px-4 py-3 text-sm flex-wrap">
                 <div>
-                  <span className="font-bold text-slate-900">Round {r.round_no} — {r.name}</span>
-                  <span className="text-slate-500"> · qualifying score {Number(r.cutoff)}%</span>
+                  <span className="font-bold text-slate-100">Round {r.round_no} — {r.name}</span>
+                  <span className="text-slate-400"> · qualifying score {Number(r.cutoff)}%</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant={r.status === 'active' ? 'success' : r.status === 'done' ? 'neutral' : 'info'}>{r.status === 'active' ? 'Current round' : r.status}</Badge>
                   {r.status !== 'active' && (
-                    <button onClick={() => makeRoundActive(r)} className="text-xs font-semibold text-indigo-700 hover:text-indigo-900 border border-indigo-200 hover:border-indigo-300 rounded-lg px-3 py-1.5 bg-white">
+                    <button onClick={() => makeRoundActive(r)} className="text-xs font-semibold text-[#FF5C38] hover:text-[#FF8A6B] border border-[#FF5C38]/30 hover:border-[#FF5C38]/40 rounded-lg px-3 py-1.5 bg-[#12172A]">
                       Make current
                     </button>
                   )}
@@ -532,7 +532,7 @@ export default function RecruiterDriveDetail() {
         <h3 className="cf-section-title">Offer letters</h3>
         <p className="cf-section-sub">Generate a letter for everyone marked as selected. Running it again only creates letters for newly selected students — nobody gets a duplicate.</p>
         {selectedCount === 0 && offerList.length === 0 ? (
-          <p className="text-sm text-slate-500 mt-4">No one is selected yet. Mark shortlisted students as selected from the list above, then come back here.</p>
+          <p className="text-sm text-slate-400 mt-4">No one is selected yet. Mark shortlisted students as selected from the list above, then come back here.</p>
         ) : (
           <form onSubmit={generateOffers} className="flex gap-3 mt-4 flex-wrap items-end">
             <div className="w-40">
@@ -552,7 +552,7 @@ export default function RecruiterDriveDetail() {
         )}
         {offerList.length > 0 && (
           <div className="mt-6">
-            <p className="text-sm text-slate-600 mb-3">
+            <p className="text-sm text-slate-400 mb-3">
               {(() => {
                 const accepted = offerList.filter((o) => o.status === 'accepted').length;
                 const declined = offerList.filter((o) => o.status === 'declined').length;
@@ -562,7 +562,7 @@ export default function RecruiterDriveDetail() {
             </p>
             <DataTable
               columns={[
-                { key: 'student', label: 'Student', render: (o) => <span className="font-medium text-slate-900">{o.student_name}</span> },
+                { key: 'student', label: 'Student', render: (o) => <span className="font-medium text-slate-100">{o.student_name}</span> },
                 { key: 'package', label: 'Package', render: (o) => o.package_lpa != null ? `₹${Number(o.package_lpa)} LPA` : '—' },
                 { key: 'joining', label: 'Joining', render: (o) => o.joining_date ? formatDate(o.joining_date) : '—' },
                 { key: 'answer', label: "Student's answer", render: (o) => o.status === 'accepted'
@@ -571,7 +571,7 @@ export default function RecruiterDriveDetail() {
                     ? <Badge variant="danger">Declined</Badge>
                     : <Badge variant="neutral">Still deciding</Badge> },
                 { key: 'generated', label: 'Generated', render: (o) => o.generated_at ? formatDate(o.generated_at) : '—' },
-                { key: 'view', label: '', render: (o) => <Link to={`/recruiter/offers/${o.id}`} className="text-sm font-semibold text-indigo-600 hover:text-indigo-800">View →</Link> },
+                { key: 'view', label: '', render: (o) => <Link to={`/recruiter/offers/${o.id}`} className="text-sm font-semibold text-[#FF5C38] hover:text-[#FF8A6B]">View →</Link> },
               ]}
               rows={offerList}
             />
@@ -584,8 +584,8 @@ export default function RecruiterDriveDetail() {
         <h3 className="cf-section-title">Interview notes</h3>
         <p className="cf-section-sub">Score each student you interviewed (0–100) and add a short remark. Saving again updates your earlier score — you only ever have one score per student.</p>
         {fbPending && fbPending.pending_count > 0 && (
-          <div className="mt-4 flex items-center justify-between gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex-wrap">
-            <p className="text-sm text-amber-900">
+          <div className="mt-4 flex items-center justify-between gap-3 bg-amber-500/10 border border-amber-500/30 rounded-xl px-4 py-3 flex-wrap">
+            <p className="text-sm text-amber-300">
               {fbPending.pending_count} student{fbPending.pending_count !== 1 ? 's' : ''} still {fbPending.pending_count !== 1 ? 'need' : 'needs'} interview notes:{' '}
               {fbPending.pending.map((p) => `${p.name} (${p.reviewers} of ${fbPending.needed})`).join(', ')}.
             </p>
@@ -595,7 +595,7 @@ export default function RecruiterDriveDetail() {
           </div>
         )}
         {interviewed.length === 0 ? (
-          <p className="text-sm text-slate-500 mt-4">No one has reached the interview stage yet. Notes open up once students are shortlisted.</p>
+          <p className="text-sm text-slate-400 mt-4">No one has reached the interview stage yet. Notes open up once students are shortlisted.</p>
         ) : (
           <form onSubmit={saveNote} className="grid md:grid-cols-[1fr_140px] gap-3 mt-4">
             <div className="grid sm:grid-cols-2 gap-3">
@@ -631,14 +631,14 @@ export default function RecruiterDriveDetail() {
         )}
         {scorecard.length > 0 && (
           <div className="mt-6">
-            <h4 className="text-sm font-bold text-slate-900 mb-3">Scorecard</h4>
+            <h4 className="text-sm font-bold text-slate-100 mb-3">Scorecard</h4>
             <DataTable
               columns={[
-                { key: 'student', label: 'Student', render: (r) => <span className="font-medium text-slate-900">{r.name}</span> },
-                { key: 'avg', label: 'Average score', render: (r) => <span className="font-bold text-indigo-700">{Number(r.average_score).toFixed(1)} / 100</span> },
+                { key: 'student', label: 'Student', render: (r) => <span className="font-medium text-slate-100">{r.name}</span> },
+                { key: 'avg', label: 'Average score', render: (r) => <span className="font-bold text-[#FF5C38]">{Number(r.average_score).toFixed(1)} / 100</span> },
                 { key: 'reviewers', label: 'Scored by', render: (r) => `${r.reviewers} ${r.reviewers === 1 ? 'person' : 'people'}` },
                 { key: 'remarks', label: 'Remarks', render: (r) => r.remarks.length ? (
-                  <ul className="space-y-1">{r.remarks.map((m, i) => <li key={i} className="text-sm text-slate-600">“{m.remarks}” <span className="text-slate-400">— {m.reviewer} ({m.score})</span></li>)}</ul>
+                  <ul className="space-y-1">{r.remarks.map((m, i) => <li key={i} className="text-sm text-slate-400">“{m.remarks}” <span className="text-slate-400">— {m.reviewer} ({m.score})</span></li>)}</ul>
                 ) : <span className="text-slate-300">—</span> },
               ]}
               rows={scorecard}
@@ -654,18 +654,18 @@ export default function RecruiterDriveDetail() {
           <p className="cf-section-sub">Built from the drive&apos;s test scores and application stages.</p>
           <div className="grid md:grid-cols-3 gap-6 mt-5">
             <div>
-              <h4 className="text-sm font-bold text-slate-900 mb-3">Test scores</h4>
+              <h4 className="text-sm font-bold text-slate-100 mb-3">Test scores</h4>
               <div className="space-y-2">
                 {driveStats.score_distribution.map((b) => (
-                  <Bar key={b.bucket} label={`${b.bucket}%`} value={b.count} max={Math.max(...driveStats.score_distribution.map((x) => x.count), 1)} color="bg-indigo-500" />
+                  <Bar key={b.bucket} label={`${b.bucket}%`} value={b.count} max={Math.max(...driveStats.score_distribution.map((x) => x.count), 1)} color="bg-[#FF5C38]" />
                 ))}
               </div>
               <p className="text-xs text-slate-400 mt-2">How many students scored in each range.</p>
             </div>
             <div>
-              <h4 className="text-sm font-bold text-slate-900 mb-3">Shortlist rate by branch</h4>
+              <h4 className="text-sm font-bold text-slate-100 mb-3">Shortlist rate by branch</h4>
               {driveStats.branch_shortlist.length === 0 ? (
-                <p className="text-sm text-slate-500">No applications yet.</p>
+                <p className="text-sm text-slate-400">No applications yet.</p>
               ) : (
                 <div className="space-y-2">
                   {driveStats.branch_shortlist.map((b) => (
@@ -676,12 +676,12 @@ export default function RecruiterDriveDetail() {
               <p className="text-xs text-slate-400 mt-2">{driveStats.branch_shortlist.map((b) => `${b.branch}: ${b.shortlisted} of ${b.applied}`).join(' · ')}</p>
             </div>
             <div>
-              <h4 className="text-sm font-bold text-slate-900 mb-3">Where students drop off</h4>
+              <h4 className="text-sm font-bold text-slate-100 mb-3">Where students drop off</h4>
               <div className="space-y-2">
                 {[
-                  ['Applied', driveStats.funnel.applied, 'bg-indigo-500'],
+                  ['Applied', driveStats.funnel.applied, 'bg-[#FF5C38]'],
                   ['Took the test', driveStats.funnel.test_taken, 'bg-amber-500'],
-                  ['Shortlisted', driveStats.funnel.shortlisted, 'bg-violet-500'],
+                  ['Shortlisted', driveStats.funnel.shortlisted, 'bg-cyan-400'],
                   ['Selected', driveStats.funnel.selected, 'bg-emerald-500'],
                 ].map(([label, n, color]) => (
                   <Bar key={label} label={label} value={n} max={Math.max(driveStats.funnel.applied, 1)} color={color} />

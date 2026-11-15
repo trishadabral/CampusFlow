@@ -10,8 +10,8 @@ import { errMsg } from '../api.js';
 
 const HOME = { admin: '/admin', recruiter: '/recruiter', student: '/student' };
 
-const inputCls = 'w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500';
-const labelCls = 'block text-sm font-medium text-slate-700 mb-1.5';
+const inputCls = 'w-full rounded-xl border border-white/10 bg-[#12172A] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400 focus:border-cyan-400';
+const labelCls = 'block text-sm font-medium text-slate-300 mb-1.5';
 
 export default function Register() {
   const { user, register, ready } = useAuth();
@@ -69,8 +69,8 @@ export default function Register() {
   return (
     <div className="min-h-screen flex items-center justify-center p-8">
       <div className="w-full max-w-md">
-        <h1 className="text-2xl font-bold text-slate-900">Create your account</h1>
-        <p className="text-sm text-slate-500 mt-1 mb-8">One account for the whole placement journey.</p>
+        <h1 className="font-display text-2xl font-bold text-slate-100">Create your account</h1>
+        <p className="text-sm text-slate-400 mt-1 mb-8">One account for the whole placement journey.</p>
 
         <form onSubmit={submit} className="space-y-4">
           <div>
@@ -95,7 +95,7 @@ export default function Register() {
           </div>
 
           {role === 'student' && (
-            <div className="rounded-2xl border border-slate-100 bg-slate-50 p-4 space-y-4">
+            <div className="rounded-2xl border border-white/10 bg-[#0B0E1A] p-4 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>Roll number</label>
@@ -123,15 +123,15 @@ export default function Register() {
 
           <button
             type="submit" disabled={busy}
-            className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-60 text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
+            className="w-full bg-[#FF5C38] hover:bg-[#E8492B] disabled:opacity-60 text-white font-semibold rounded-xl py-2.5 text-sm transition-colors"
           >
             {busy ? 'Creating account…' : 'Create account'}
           </button>
         </form>
 
-        <p className="text-sm text-slate-500 mt-6 text-center">
+        <p className="text-sm text-slate-400 mt-6 text-center">
           Already have an account?{' '}
-          <Link to="/login" className="font-semibold text-indigo-600 hover:text-indigo-800">Sign in</Link>
+          <Link to="/login" className="font-semibold text-[#FF5C38] hover:text-[#FF8A6B]">Sign in</Link>
         </p>
       </div>
     </div>

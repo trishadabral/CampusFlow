@@ -1,21 +1,22 @@
 // Stat card: big number + small label + tiny SVG icon. Used on every dashboard.
 
-export default function StatCard({ label, value, icon, accent = 'indigo' }) {
+export default function StatCard({ label, value, icon, accent = 'coral' }) {
   const accents = {
-    indigo: 'bg-indigo-50 text-indigo-600',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    amber: 'bg-amber-50 text-amber-600',
-    rose: 'bg-rose-50 text-rose-600',
-    slate: 'bg-slate-100 text-slate-600',
+    coral: 'bg-[#FF5C38]/10 text-[#FF5C38]',
+    cyan: 'bg-cyan-500/10 text-cyan-300',
+    emerald: 'bg-emerald-500/10 text-emerald-400',
+    amber: 'bg-amber-500/10 text-amber-400',
+    rose: 'bg-rose-500/10 text-rose-400',
+    slate: 'bg-[#151B30] text-slate-400',
   };
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-5 flex items-center gap-4">
-      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${accents[accent] ?? accents.indigo}`}>
+    <div className="bg-[#12172A] rounded-2xl shadow-sm border border-white/10 p-5 flex items-center gap-4">
+      <div className={`w-11 h-11 rounded-xl flex items-center justify-center shrink-0 ${accents[accent] ?? accents.coral}`}>
         {icon}
       </div>
       <div className="min-w-0">
-        <div className="text-2xl font-bold text-slate-900 leading-tight">{value ?? '—'}</div>
-        <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</div>
+        <div className="font-display text-2xl font-bold text-slate-100 leading-tight">{value ?? '—'}</div>
+        <div className="text-xs font-medium text-slate-400 uppercase tracking-wide">{label}</div>
       </div>
     </div>
   );
