@@ -17,16 +17,20 @@ OS concept, real DBMS work, and its own UI screens.
 **Built:**
 - **Database design** — the full 3NF schema (`database/schema.sql`): 14 tables, primary/foreign keys,
   CHECK constraints, indexes; audit triggers on bookings, applications and allocations
-- **Migrations** — `server/src/dbms/migrations.js`: `migrate_*.sql` files upgrade a live database
-  without wiping data, tracked in `schema_migrations` (`npm run db:migrate`)
-- **Migrations** — `database/migrate_v2.sql` so existing installs upgrade cleanly
+- **Migrations** — `server/src/dbms/migrations.js`: `database/migrate_v2.sql` …
+  `migrate_v7.sql` upgrade a live database without wiping data, tracked in
+  `schema_migrations` (`npm run db:migrate`)
 - **DB pool** — `server/src/dbms/db.js`: the shared connection pool, plus `tableCounts()`
   and `healthCheck()` (powers the Live Monitor stats)
 - **Banker's safety check** — `server/src/os/banker.js`: every manual booking runs the
   safe-sequence check; unsafe requests are refused *with an explanation of what would
   over-allocate*
-- **Seed data** — 12 students (mixed CGPA/branches/backlogs), companies, drives, test questions,
-  labs and interview rooms (`server/src/seed.js`)
+- **Seed data** — 24 students (mixed CGPA/branches/backlogs), 4 companies, 9 drives
+  at every stage, 112 applications, 64 test questions, 44 test results, 18
+  bookings, 11 feedback entries, 5 offer letters, 27 notifications, 18 lab
+  machines, plus exam-monitoring demo rows (2 agent devices, 2 exam sessions,
+  4 monitoring events) — all dates relative to the reset day
+  (`server/src/seed.js`)
 - **Auth system** — register/login, JWT tokens, bcrypt password hashing, role-based access control
   (`requireRole` middleware: admin > recruiter > student)
 - **App shell** — sidebar + topbar layout, role-based navigation, notification bell, login page
@@ -34,7 +38,9 @@ OS concept, real DBMS work, and its own UI screens.
 - **Shared UI kit** — buttons, cards, inputs, tables, badges, steppers, empty states, and the
   whole design system (`client/src/index.css`, `client/src/components/`)
 - **API layer** — the single Axios client every page uses (`client/src/api.js`)
-- **Users page** — admin directory of all accounts
+- **Users page** — admin directory of all accounts, plus creating recruiter/admin
+  accounts, activating/deactivating accounts (`users.is_active`, enforced at
+  login and on every token check), and one-time password resets
 
 **OS concept:** privilege rings (RBAC), the request-as-process model, connection pooling as
 resource management.
@@ -87,11 +93,17 @@ exactly 10 win.
   ("who's booking right now", "recent activity", rush-hour test), no OS jargon on screen;
   still the demo surface for the viva
 - **Stress test** — `POST /api/monitor/stress`: fires N concurrent booking attempts and proves
-  `confirmed = min(attempts, seats)` with zero oversell
+  `confirmed = min(attempts, seats)` with zero oversell. Measured 2026-11-16:
+  100 attempts on a 10-seat slot → exactly 10 confirmed in ~370 ms. (The
+  lock-event log runs on its own small connection pool in `os/locks.js`, so
+  logging can never starve the booking transactions — the shared-pool version
+  deadlocked itself and only booked 5 of 10 seats in 250 s.)
 - **Notifications backend** — the inbox tables and APIs students rely on for schedules and results
-- **CPU scheduling simulator** — `server/src/os/cpu-scheduler.js`: FCFS / Priority
-  with waiting-time analysis (Round-Robin deliberately removed — preemptive time-slicing
-  makes no sense for interviews)
+- **CPU scheduling simulator** — `server/src/os/cpu-scheduler.js`: FCFS / Priority /
+  SJF / SRTF with waiting-time, turnaround, response-time, utilisation and
+  throughput analysis (Round-Robin deliberately removed — preemptive
+  time-slicing makes no sense for interviews); run + compare endpoints
+  `POST /api/os/schedule/run` and `/compare`
 - **Interview Scheduler** — `POST /schedule/auto` (`server/src/routes/schedule.js`): pick a drive
   and the system timetables its shortlisted students — priority from marks (highest CGPA
   first) or application order, a lab reserved for the whole window via the Banker's safety
@@ -182,7 +194,10 @@ MySQL — see [DEMO_SCRIPT.md](DEMO_SCRIPT.md).
 - **Resource calendar** — week view of labs/rooms, click to create manual
   events, drag manual events to move them, strict interval-overlap check.
 - **Report exports** — one-click CSV of drive reports and rosters reusing
-  `reports.js` queries; print via the existing print stylesheet (no PDF library).
+  `reports.js` queries; print via the existing print stylesheet. (The
+  per-drive result PDF came later, with the merge — `GET
+  /api/reports/drives/:id/report.pdf`, pdfkit; see "Merged from Ishika's
+  CampusFlow" below.)
 - **Placement statistics** — year-wise placement % (distinct students, not
   applications), average package from offer letters, top recruiters; safe
   empty states, never NaN.
@@ -190,8 +205,9 @@ MySQL — see [DEMO_SCRIPT.md](DEMO_SCRIPT.md).
 ## Merged from Ishika's CampusFlow (2026-11-16)
 
 Ishika's repo had grown features this repo did not have; they were merged
-here (locally, uncommitted at the time of writing) with Trisha's dark theme
-and Phase 2 work kept intact. What landed, by owner:
+here, verified end to end, and pushed to GitHub as commit `a5c250b`
+(local commit `62677b1`). Trisha's dark theme and Phase 2 work were kept
+intact. What landed, by owner:
 
 - **Ishika Rawat (M1)** — exam monitoring: `server/src/socket.js`
   (Socket.IO live feed), `server/src/routes/agent.js` (Windows agent
@@ -234,6 +250,23 @@ dead code with wrong `withTransaction`/`audit_log` signatures — the working
 logic was ported into `admin.js`/`users.js` instead), Round-Robin
 scheduling, disk-based resumes (multer), and the `offers` table (this repo's
 `offer_letters` is the single offer system).
+
+**Verification of the merge (2026-11-16, real MariaDB 10.11 in the sandbox):**
+115/115 endpoint checks pass, `npm test` 10/10, frontend build passes,
+`db:reset` + `db:migrate` clean — including the v7 upgrade path on a database
+created before the merge. Six real bugs were found and fixed while merging:
+`os_runs.created_by` had the wrong type and `db:reset` failed outright;
+`driveRoster()` used MySQL-only `ANY_VALUE()` (MariaDB has none — now
+`MIN()`, same result, works on both); recruiter offers read the wrong
+`created_at` column; a student could not read their own offer letter (403);
+the rush-hour test deadlocked its own connection pool (see the stress-test
+note under Trisha above); and stress-test cleanup left a stale
+`booked_count`. Demo data for the new pages was added to the seed (2 agent
+devices, 2 exam sessions, 4 monitoring events, 4 lock events), so Exam
+Monitoring and the Live Monitor open non-empty after a fresh reset. Still
+not verified here: browser-only flows (tab-switch, fullscreen, live
+Socket.IO feed), the Windows agent build, and Docker MySQL 8 as the final
+proof — those need the laptop run.
 
 ## How we worked
 

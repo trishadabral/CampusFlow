@@ -44,6 +44,35 @@ rotating across panels and rooms. Students are notified at every step.
 
 ---
 
+## ✨ Merged from Ishika's CampusFlow (2026-11-16)
+
+Her repo had grown features this one did not have; they were merged in and pushed
+(GitHub commit `a5c250b`). The dark theme and all Phase 2 work were kept intact.
+
+- **Exam monitoring** — live exam feed over Socket.IO, lab-PC allocation (First Fit /
+  Best Fit), and a Windows monitoring agent for proctored exams. Admin pages:
+  **Exam Monitoring** and **Exam PCs** (see [docs/AGENT_API.md](docs/AGENT_API.md)).
+- **Recruiter workspace** — company profile page, inbox, applicants list with
+  search/sort/pages, bulk shortlist/reject, and per-student offers.
+- **More reports** — branch, company and package summaries, each with a CSV download.
+- **OS lab tools** — CPU scheduling run + compare now also covers SJF and SRTF
+  (Round-Robin stays out by design), plus a race-condition demo.
+- **Student journey page** — the full Applied → Test → Result → Interview timeline
+  with offer answers and application withdrawal. Sign-up is now student-only;
+  staff accounts are created by an admin from the Users page.
+- **Database** — migration `database/migrate_v7.sql`: exam-monitoring tables
+  (`computers`, `agent_devices`, `exam_sessions`, `monitoring_events`,
+  `prohibited_processes`), run/demo tables (`os_runs`, `demo_seats`), and the
+  `v_branch_placement` / `v_company_funnel` / `v_package_stats` views.
+
+Verified 2026-11-16 against a real MariaDB 10.11 database: 115 endpoint checks
+pass, `npm test` 10/10, frontend build passes, `db:reset` + `db:migrate` clean
+(including the v7 upgrade path on a database created before the merge). Still to
+confirm on a laptop: the browser-only flows (tab-switch detection, fullscreen,
+live Socket.IO feed) and the Windows agent build; MySQL 8 is the final proof.
+
+---
+
 ## 🚀 Run it locally
 
 Full step-by-step guide (including troubleshooting): **[docs/03_INSTALLATION.md](docs/03_INSTALLATION.md)**
@@ -79,18 +108,21 @@ One-click demo buttons are on the login page.
 
 | Doc | What it covers |
 |---|---|
-| [docs/01_TEAM_CONTRIBUTIONS.md](docs/01_TEAM_CONTRIBUTIONS.md) | What each team member built (Phase 1 + Phase 2) |
+| [docs/01_TEAM_CONTRIBUTIONS.md](docs/01_TEAM_CONTRIBUTIONS.md) | What each team member built (Phase 1 + Phase 2 + the Ishika merge) |
 | [docs/02_PHASE2_PLAN.md](docs/02_PHASE2_PLAN.md) | Features planned for the next evaluation, with owners |
 | [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | How to demo every Phase 2 feature end to end for the final evaluation |
+| [docs/AGENT_API.md](docs/AGENT_API.md) | The Windows exam-monitoring agent protocol (register / heartbeat / events) |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the pieces fit together (database, pipeline, exam-monitoring flow) |
+| [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | What is still open, and what the merge fixed |
 | [docs/03_INSTALLATION.md](docs/03_INSTALLATION.md) | How to install and run the app on your machine |
 
 Older working documents are preserved in `docs/archive/`.
 
 ## 🛠️ Tech stack
 
-- **Frontend:** React + Vite + Tailwind CSS, React Router, Axios
-- **Backend:** Node.js + Express, JWT auth, bcrypt
-- **Database:** MySQL 8 (InnoDB) — 3NF schema, triggers, stored procedures, row-level locking
+- **Frontend:** React + Vite + Tailwind CSS, React Router, Axios, Socket.IO client
+- **Backend:** Node.js + Express, JWT auth, bcrypt, Socket.IO, pdfkit (drive-result PDF)
+- **Database:** MySQL 8 (InnoDB) — 3NF schema, 26 tables, 4 views, triggers, stored procedures, row-level locking
 
 ## 👥 Team
 

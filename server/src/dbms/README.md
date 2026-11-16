@@ -1,17 +1,18 @@
 # `src/dbms/` — DBMS concepts, as running code
 
 Every file here implements DBMS concepts from the syllabus, with real SQL. The schema
-itself (`database/schema.sql`) carries the rest: 3NF tables, keys, CHECK constraints,
-indexes, audit triggers, the `sp_generate_shortlist` procedure and the `v_drive_report` view.
+itself (`database/schema.sql`) carries the rest: 26 tables in 3NF, keys, CHECK constraints,
+indexes, audit triggers, the `sp_generate_shortlist` procedure and four views
+(`v_drive_report`, `v_branch_placement`, `v_company_funnel`, `v_package_stats`).
 
 | File | DBMS concept — and the SQL it owns | Owner | Where it's used |
 |---|---|---|---|
-| `db.js` | **Connection pooling + database census.** The shared pool, plus `healthCheck()` (`SELECT 1`) and `tableCounts()` — one row-count per table in a single round-trip of sub-selects. | Ishika | Every route and module; System Monitor stats |
-| `migrations.js` | **Schema versioning (DDL management).** `migrate_*.sql` files upgrade a live database without wiping data; applied versions tracked in `schema_migrations` (`CREATE TABLE IF NOT EXISTS`, `SELECT version`, `INSERT`). Fresh installs use `npm run db:reset`; upgrades use `npm run db:migrate`. | Ishika | `npm run db:migrate` |
+| `db.js` | **Connection pooling + database census.** The shared pool, plus `healthCheck()` (`SELECT 1`) and `tableCounts()` — one row-count per table in a single round-trip of sub-selects. | Ishika | Every route and module; Live Monitor stats |
+| `migrations.js` | **Schema versioning (DDL management).** `database/migrate_v2.sql` … `migrate_v7.sql` upgrade a live database without wiping data; applied versions tracked in `schema_migrations` (`CREATE TABLE IF NOT EXISTS`, `SELECT version`, `INSERT`). Fresh installs use `npm run db:reset`; upgrades use `npm run db:migrate`. v7 adds the exam-monitoring tables, the OS-lab run/demo tables, the extra report views, `users.is_active`, profile fields and the `withdrawn` status. | Ishika | `npm run db:migrate` |
 | `transactions.js` | **ACID transactions.** `withTransaction(work)` (BEGIN … COMMIT, auto-ROLLBACK) plus the multi-statement operations that need it: `replaceQuestionSet()` (`DELETE` + `INSERT`s) and `recordTestResult()` (`INSERT` result + `UPDATE` application status — never one without the other). | Akshay | Question builder saves; test submissions |
-| `audit.js` | **Audit-trail reads.** Triggers write every mutation to `audit_log`; this module reads it back — recent activity, per-record history (via `idx_audit_entity`), and `GROUP BY` summaries. | Akshay | System Monitor activity feed; Phase-2 audit viewer |
+| `audit.js` | **Audit-trail reads.** Triggers write every mutation to `audit_log`; this module reads it back — recent activity, per-record history (via `idx_audit_entity`), and `GROUP BY` summaries. | Akshay | Live Monitor activity feed; Phase-2 audit viewer |
 | `eligibility.js` | **Set-based eligibility.** The drive rules in two forms: `checkEligibility()` explains *why* per student, and `findEligibleStudents()` enforces the same rules as ONE indexed query (`WHERE cgpa >= … AND JSON_CONTAINS(branches…)`). | Akansha | Apply flow, wizard preview, eligible-students view |
-| `reports.js` | **Aggregate reporting queries.** JOINs, GROUP BY, conditional COUNTs and the `v_drive_report` view — the SQL behind the Control Center, master schedule, roster and placement reports. | Trisha | `GET /api/admin/*`, `GET /api/reports/placement` |
+| `reports.js` | **Aggregate reporting queries.** JOINs, GROUP BY, conditional COUNTs and the `v_drive_report` view — the SQL behind the Control Center, master schedule, roster and placement reports. The roster query uses `MIN()` (not MySQL-only `ANY_VALUE()`) so it runs on MySQL 8 and MariaDB alike. | Trisha | `GET /api/admin/*`, `GET /api/reports/placement` |
 
 **Viva one-liners:**
 - *Why a stored procedure / single query for eligibility?* — Set-based logic runs where the

@@ -79,6 +79,16 @@ never run, scheduling behaves exactly as before (capacity only). The
 Resources page (Admin → Resources → "Lab machines") shows the live list:
 machine, lab, status, and how long ago it last reported.
 
+## Not the same as the Windows exam agent
+
+This agent watches whether lab machines are up and free for *scheduling*.
+The proctored-exam agent is a different program — `windows-agent/`, a C++17
+Windows service that reports the active window/process during exams; its
+protocol is in `docs/AGENT_API.md` and its live view is Admin → Exam
+Monitoring. Don't confuse the two: this one talks to
+`POST /api/lab-agent/report` with a shared key, the Windows one talks to
+`/api/agent/*` with a per-PC token.
+
 ## Honest limitations
 
 - The agent reports the machine it runs on. To cover a whole lab, run one

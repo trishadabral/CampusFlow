@@ -23,7 +23,10 @@ All demo accounts use password **`password123`**.
 stage, 2 finished with offers — 112 applications, 44 test results, a full
 test session with 2 students on the waiting list, 6 interview slots with
 feedback, 5 offer letters (2 accepted, 1 declined, 2 pending), 27 inbox
-messages, and 18 lab machines already reporting. Every date is relative to
+messages, and 18 lab machines already reporting. Exam monitoring ships with
+demo data too: 10 exam PCs (Lab A + Lab B), 2 agent devices, 2 exam
+sessions (one live today, one scheduled tomorrow), and 4 monitoring events
+(3 unreviewed flags, 1 already reviewed). Every date is relative to
 the reset day, so the data never goes stale. TCS/Infosys are sample company
 names only — no real affiliation is claimed.
 
@@ -40,7 +43,7 @@ cd server
 cp .env.example .env            # put your MySQL password in DB_PASSWORD
 npm install                     # picks up nodemailer (Phase 2)
 npm run db:reset                # fresh install: schema.sql now includes all Phase 2 tables
-# — or, to keep existing data: npm run db:migrate   (applies migrate_v4.sql + migrate_v5.sql once)
+# — or, to keep existing data: npm run db:migrate   (applies migrate_v4.sql … migrate_v7.sql once)
 npm run dev                     # API at http://localhost:5000
 
 # 3. Frontend (second terminal)
@@ -54,9 +57,11 @@ step below still works — the message is saved in the student's in-app inbox an
 the email is skipped with a log line. To show real emails, fill in `SMTP_HOST`,
 `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` and restart the backend.
 
-**New accounts:** the login page has a **"Create an account"** link — anyone
-can register as a student, recruiter or admin from there (no separate invite
-step). Demo accounts below still work as before.
+**New accounts:** public sign-up on the login page is student-only — the
+"Create an account" link registers a student account (any role in the form
+is ignored). Recruiter and admin accounts are created by an admin from the
+Users page, which can also deactivate an account or reset its password.
+Demo accounts below still work as before.
 
 **Narrow screens:** the sidebar collapses into a menu button below ~768px and
 the admin grids stack, so the whole demo also works on a small laptop window.
@@ -186,7 +191,9 @@ the admin grids stack, so the whole demo also works on a small laptop window.
   Publishing overwrites `test_taken` status — status alone would undercount.
 
 ### 2e. Interview Scheduler — timetable chart
-1. As **Admin** → **Interview Scheduler** → pick a drive → **Generate
+1. As **Admin** → open `/admin/scheduling` directly (the Interview Scheduler
+   lives at that address; it is not on the sidebar, which only keeps the
+   seven most-used admin pages) → pick a drive → **Generate
    timetable** (or open one already generated).
 2. Below the slot list, a **timetable chart** (Gantt) shows every interview as
    a bar on a minutes timeline — who is being interviewed, when, and for how
@@ -240,7 +247,8 @@ g++ -std=c++17 -O2 -o lab-agent agent/lab-agent.cpp
   done, cheapest to redo.
 
 ### 3c. Audit log viewer
-1. As **Admin** → sidebar **Activity log**.
+1. As **Admin** → open `/admin/audit` directly (the activity log lives at
+   that address; it is not on the sidebar).
 2. Search "booking", filter by What happened / Which area / Who / date range →
    the table shows when, who, what, which record. Click a record link
    (e.g. "Booking #12") → its full history below (created → updated → removed).
@@ -285,7 +293,9 @@ g++ -std=c++17 -O2 -o lab-agent agent/lab-agent.cpp
   409, unchanged.)
 
 ### 4b. Resource calendar
-1. As **Admin** → **Room calendar** (week view, Mon–Sun, 8:00–18:00, room filter).
+1. As **Admin** → open `/admin/calendar` directly (the room calendar lives at
+   that address; it is not on the sidebar) — week view, Mon–Sun, 8:00–18:00,
+   room filter.
 2. Click an empty cell (e.g. Tue 10:00) → title "Workshop" → save: an amber
    block appears. Bookings from drives show as blue blocks with booked/capacity.
 3. Try a second manual booking overlapping it (10:30–11:30) → "That room is
@@ -302,14 +312,17 @@ g++ -std=c++17 -O2 -o lab-agent agent/lab-agent.cpp
 ### 4c. Report exports
 1. As **Admin** → **Reports** → **Download CSV** → open `placement-report.csv`:
    one row per drive (Applied / Shortlisted / Selected / Avg CGPA).
-2. Per-drive row → **Download drive report (CSV)** → the roster (name, branch, CGPA,
+2. Per-drive row → **Download list (CSV)** → the roster (name, branch, CGPA,
    status, test %, sessions).
-3. **Print** → print preview shows only the report (sidebar hidden).
-- **Show:** `server/src/routes/reports.js` (`export.csv`, `roster.csv`),
+3. Per-drive row → **Download result (PDF)** → a real PDF of the drive result
+   (summary tiles + roster table, one file per drive).
+4. **Print** → print preview shows only the report (sidebar hidden).
+- **Show:** `server/src/routes/reports.js` (`export.csv`, `roster.csv`,
+  `report.pdf` via `server/src/utils/drive-result-pdf.js` + pdfkit),
   `server/src/utils/csv.js` (RFC 4180 quoting).
 - **Viva:** *Why reuse `placementReport()`/`driveRoster()`?* One SQL source,
-  two renderings — the CSV can never disagree with the screen. No PDF library:
-  CSV + the browser's print-to-PDF covers it with zero new dependencies.
+  two renderings — the CSV can never disagree with the screen. The PDF is
+  built from the same roster query, so all three agree.
 
 ### 4d. Placement statistics
 1. As **Admin** → **Reports** → **Placement statistics** (top of the page):
@@ -397,6 +410,90 @@ g++ -std=c++17 -O2 -o lab-agent agent/lab-agent.cpp
 
 ---
 
+## Act 6 — Merged from Ishika's CampusFlow (2026-11-16)
+
+### 6a. Exam monitoring (live proctoring view)
+1. As **Admin** → sidebar **Exam Monitoring**. On a fresh reset it already
+   shows live demo data: **LAB-A-PC02** online with Diya's Data Analyst test
+   in progress (09:00–12:00 today) and 3 unreviewed flags — a window switch,
+   a focus loss, and Discord detected — plus one flag already reviewed with a
+   note. **LAB-A-PC01** shows Aarav's session scheduled for tomorrow 10:00.
+2. Filter the flags (New / Reviewed / Dismissed): open the Discord flag →
+   **Mark as reviewed** (or **Dismiss**) → the count drops. The page says it
+   plainly: flags need human review — they are not proof of cheating.
+3. **Exam PCs** (sidebar): 10 PCs across Lab A + Lab B, each with its
+   enrolment code. **Allocate session** → pick a PC, a student and a drive →
+   the session appears on Exam Monitoring. Back there, **Start session** /
+   **End session** move it through its lifecycle; ending frees the PC.
+4. Live agent path (no Windows machine needed): copy an enrolment code from
+   Exam PCs, then in a terminal run the simulator —
+   `node scripts/agent-simulator.js <enrolment-code> --events` — and watch
+   the PC flip online on Exam Monitoring and test events arrive. Stop it:
+   after ~15 s of silence the PC flips offline (the server notices the
+   silence; a dead agent can't report itself).
+- **Show:** `server/src/routes/agent.js` (register / heartbeat / events,
+  SHA-256 token auth, 15 s sweeper), `server/src/socket.js` (live feed to
+  admins), `server/src/os/pc-allocator.js` (First Fit + Best Fit under a row
+  lock), `docs/AGENT_API.md`, `windows-agent/` (the real Windows agent —
+  build it with `windows-agent/build.bat` on a Windows machine with Visual
+  Studio Build Tools; the build has not been run from this repo yet).
+- **Viva:** *Why does the server decide who is offline?* The agent can't
+  report its own death. *Why a token per PC, hashed in the DB?* A leaked
+  token is useless without the PC it belongs to, and the plain token is
+  never stored.
+
+### 6b. Recruiter workspace
+1. As **Priya** → sidebar **Company**: TechCorp's profile (description,
+   location, industry, HR contact) — edit and save it.
+2. Sidebar **Inbox**: the recruiter's notifications, newest first.
+3. Open a drive → the applicants list now has search, sorting and pages;
+   tick a few checkboxes → **Shortlist** (or **Reject**) applies to all of
+   them at once. Extend an offer from a row, or withdraw a pending one.
+- **Show:** `server/src/routes/recruiter.js`, `GET /api/resumes/:studentId`
+  (resume download, access-checked — only the student's recruiter or an
+  admin).
+
+### 6c. More reports
+1. As **Admin** → **Reports** → scroll to **More reports**: branch, company
+   and package tables, each with its own **Download CSV**.
+- **Show:** `server/src/routes/reportsExtra.js`, views `v_branch_placement`,
+  `v_company_funnel`, `v_package_stats`.
+
+### 6d. OS lab tools — scheduling + race demo
+1. As **Admin** → open `/admin/scheduling` directly → pick an algorithm
+   (FCFS / Priority / **SJF / SRTF** — new in this build) → **Run**, then
+   **Compare**: two algorithms side by side with waiting/turnaround
+   averages. Round-Robin is still not offered — preemptive time-slicing
+   makes no sense for interviews.
+2. Race demo (terminal only — no button in the UI yet): log in as the admin
+   to get a token, then
+   `curl -X POST http://localhost:5000/api/os/race-demo -H "Authorization: Bearer <token>" -H "Content-Type: application/json" -d '{"mode":"unsafe","attempts":100,"capacity":10}'`
+   → 10 seats oversold; repeat with `"mode":"safe"` → exactly 10 booked,
+   0 oversold. Same idea as the rush-hour test, but you can see both
+   outcomes back to back.
+- **Show:** `server/src/os/cpu-scheduler.js` (now also SJF/SRTF),
+  `server/src/routes/admin/os-schedule.js` (`/run`, `/compare`),
+  `server/src/routes/admin/os-race-demo.js` (scratch table `demo_seats`,
+  never real bookings).
+- **Viva:** *Why does "safe" win?* The whole check-and-book runs inside
+  one transaction holding the row lock — two attempts can never both see
+  a free seat.
+
+### 6e. Student journey page + student-only sign-up
+1. As **Aarav** → sidebar **My Journey**: the full timeline Applied → Test
+   → Result → Interview with his real state at each step, plus offer
+   answers and a withdraw button on open applications.
+2. Log out → **Create an account** → the form registers a student only;
+   there is no role picker any more. Staff accounts come from the admin's
+   Users page.
+3. As **Aarav**, take a test: the test page now offers fullscreen and asks
+   **"Submit?"** before finishing (a timeout or third tab-switch still
+   submits immediately, without the confirmation).
+- **Show:** `client/src/pages/student/StudentJourney.jsx`,
+  `server/src/routes/auth.js` (register forces `role = 'student'`).
+
+---
+
 ## Suggested 15-minute evaluator run
 
 If time is short, do exactly this: **1a** (reset link, 1 min) → **1d** (two
@@ -406,7 +503,8 @@ windows, live bell, 1 min) → **2a+2b** (round cutoff + scorecard, 2 min) →
 demo, 2 min) → **3c** (search the activity log, 1 min) → **4a** (book a seat,
 waitlist promote, 2 min) → **4b+4c+4d** (calendar drag, CSV download, stats,
 2 min) → **5a+5b+5c** (eligibility explainer, accept an offer, next-action
-card, 2 min).
+card, 2 min) → **6a** (exam flags + review, 2 min) → **6d** (SJF/SRTF
+compare, 1 min).
 
 ## If something goes wrong
 
@@ -414,7 +512,7 @@ card, 2 min).
 |---|---|
 | `Access denied` on `db:reset` | `server/.env` (not `.env.example`) needs `DB_PASSWORD` |
 | `ECONNREFUSED 127.0.0.1:3306` | `docker compose up -d`, wait 15 s |
-| New tables missing on an old database | `cd server && npm run db:migrate` (applies `migrate_v4.sql` + `migrate_v5.sql` once; re-running is safe — migrations are idempotent) |
+| New tables missing on an old database | `cd server && npm run db:migrate` (applies `migrate_v4.sql` … `migrate_v7.sql` once; re-running is safe — migrations are idempotent) |
 | Emails never arrive | SMTP blank = in-app only, by design. Fill `SMTP_*` and restart the backend |
 | Agent reports nothing | Backend must be running first; check `--lab` matches a real resource id |
 | Port 5000 / 5173 busy | Set `PORT=` in `server/.env`; Vite picks the next free port itself |

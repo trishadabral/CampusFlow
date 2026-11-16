@@ -1,16 +1,15 @@
 # Phase 2 Plan — Next Evaluation
 
-**Status (2026-11-10): all 14 features built and committed on `main` (locally —
-run `git push origin main` from a machine with credentials).** Each feature
-below is marked ✅ with the files that implement it. Full walkthrough:
-[docs/DEMO_SCRIPT.md](DEMO_SCRIPT.md). Foundation shared by all waves:
-`database/migrate_v4.sql` (+ `schema.sql` mirror), `server/src/mailer.js`
-(email, best-effort), `server/src/realtime.js` (SSE live updates),
-`server/src/utils/csv.js`.
+**Status (2026-11-16): all 14 features built and pushed to GitHub
+(`a5c250b`).** Each feature below is marked ✅ with the files that implement
+it. Full walkthrough: [docs/DEMO_SCRIPT.md](DEMO_SCRIPT.md). Foundation
+shared by all waves: `database/migrate_v4.sql` (+ `schema.sql` mirror),
+`server/src/mailer.js` (email, best-effort), `server/src/realtime.js` (SSE
+live updates), `server/src/utils/csv.js`.
 
 **Completion pass (2026-11-15):** an audit of the built app found broken,
-unwired and mismatched pieces, all fixed on `main` (locally, not yet pushed):
-broken defects B1–B6 (resource badge crash, dead Live Monitor lock table,
+unwired and mismatched pieces, all fixed on `main` and pushed with the
+merge below: broken defects B1–B6 (resource badge crash, dead Live Monitor lock table,
 audit details crash, allocate seats ignored, audit actor never recorded,
 non-idempotent migrations); unwired features U1–U6 (book-a-seat buttons,
 per-drive CSV, dead API helpers, Gantt chart, waitlisted sessions visible,
@@ -64,10 +63,31 @@ Each feature has one owner — the member whose module it extends.
 |---|---|
 | **Waitlist management** ✅ | Full test sessions get a waitlist; cancellations auto-promote the next student and notify them — `server/src/os/critical-section.js` (`bookSeat({allowWaitlist})`), `server/src/routes/bookings.js` (cancel → promote under the same lock), "Waiting list" in `client/src/pages/student/MyBookings.jsx`. |
 | **Resource calendar** ✅ | Week view of every lab and room — what's booked, what's free, drag-to-book for manual events — `server/src/routes/resources.js` (calendar + manual-events endpoints, overlap check), `manual_events` table, `client/src/pages/admin/ResourceCalendar.jsx` (`/admin/calendar`). |
-| **Report exports** ✅ | One-click CSV/PDF export of drive reports and rosters — `server/src/routes/reports.js` (`export.csv`, `roster.csv`, via `server/src/utils/csv.js`), download buttons on `client/src/pages/admin/Reports.jsx` + print (CSV + print-to-PDF; no PDF library added). |
+| **Report exports** ✅ | One-click CSV/PDF export of drive reports and rosters — `server/src/routes/reports.js` (`export.csv`, `roster.csv`, via `server/src/utils/csv.js`), `GET /api/reports/drives/:id/report.pdf` (real PDF via pdfkit, `server/src/utils/drive-result-pdf.js`), download buttons on `client/src/pages/admin/Reports.jsx` + print. |
 | **Placement statistics** ✅ | Year-wise placement percentages, average packages, top recruiters dashboard — `server/src/dbms/reports.js` (`placementStats()`), `GET /api/reports/placement-stats`, "Placement statistics" on `client/src/pages/admin/Reports.jsx`. |
 
 ---
+
+## Merged from Ishika's CampusFlow (2026-11-16) — also on `main` (`a5c250b`)
+
+Her repo had grown features this one did not have; they were merged in,
+verified (115/115 endpoint checks on a real MariaDB 10.11 database), and
+pushed. Full record: [01_TEAM_CONTRIBUTIONS.md](01_TEAM_CONTRIBUTIONS.md)
+("Merged from Ishika's CampusFlow").
+
+| Area | What landed |
+|---|---|
+| **Exam monitoring** ✅ | Live exam feed over Socket.IO (`server/src/socket.js`), Windows agent protocol (`server/src/routes/agent.js` — register / heartbeat / events, SHA-256 token auth, 15 s offline sweeper), lab-PC allocation First Fit + Best Fit (`server/src/os/pc-allocator.js`), C++17 Windows agent (`windows-agent/`, `docs/AGENT_API.md`), admin pages Exam Monitoring (`/admin/monitoring`) and Exam PCs (`/admin/exam-pcs`), migration `database/migrate_v7.sql`. |
+| **Recruiter workspace** ✅ | Company profile (`/recruiter/company`), inbox (`/recruiter/inbox`), applicants with search/sort/pages, bulk shortlist/reject, per-student offer extension and withdrawal (`server/src/routes/recruiter.js`), resume downloads (`server/src/routes/resumes.js`). |
+| **Extra reports** ✅ | Branch / company / package summaries + CSV exports (`server/src/routes/reportsExtra.js`, views `v_branch_placement`, `v_company_funnel`, `v_package_stats`). |
+| **OS lab tools** ✅ | CPU scheduling run + compare now also covers SJF and SRTF (`POST /api/os/schedule/run`, `/compare`; Round-Robin stays out), race-condition demo (`POST /api/os/race-demo`). |
+| **Accounts & journey** ✅ | Public sign-up is student-only (staff accounts are created by an admin); `users.is_active` gate; student journey page (`/student/journey`); profile fields phone / projects / certifications; test page gains fullscreen and a submit confirmation. |
+
+Deliberately **not** merged: the "Campus Registrar" visual language (dark
+theme kept), the drive/test approval workflow (dormant — not wired up, and
+not documented as a working feature anywhere in this repo), Round-Robin,
+disk-based resumes, and the `offers` table (this repo's `offer_letters` is
+the single offer system).
 
 ## Non-goals (still out of scope)
 

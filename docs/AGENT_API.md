@@ -61,7 +61,15 @@ Enroll a new Windows machine and receive a dedicated agent authentication token.
 #### Error Responses
 - `400 Bad Request`: Missing enrollment code.
 - `404 Not Found`: Invalid or non-existent enrollment code.
-- `429 Too Many Requests`: Rate limit exceeded.
+- `429 Too Many Requests`: Rate limit exceeded (15 registration attempts per
+  minute per IP).
+
+> Enrolment codes are random per database reset (`ENROLL-LAB-A-XXXXXXXX`)
+> and are shown on the admin **Exam PCs** page (`/admin/exam-pcs`), which
+> can also generate a fresh code for a PC. The demo reset prints the two
+> demo agent tokens to the server log, but those are agent tokens for
+> already-registered devices — a new agent enrols with its PC's enrolment
+> code, not with a demo token.
 
 ---
 
@@ -182,4 +190,50 @@ The backend runs an internal periodic sweeper every 5 seconds:
 - If `last_heartbeat_at` is older than **15 seconds**, the agent status transitions to `offline`.
 - If the computer has an `active` exam session when it goes offline, the sweeper automatically inserts an `AGENT_DISCONNECTED` event.
 - When an offline agent resumes heartbeats during an active session, an `AGENT_RECONNECTED` event is automatically generated.
+
+## 5. Live Feed (Socket.IO)
+
+Admin browsers connect to the same server over Socket.IO (JWT auth, same
+login token as the REST API; the client proxy is `/socket.io`). Admins join
+the `admins` room and receive:
+
+| Event | When it fires | Payload (shape) |
+| :--- | :--- | :--- |
+| `agent:status` | An agent comes online / goes offline, or a session starts/ends on its PC | `{ computer_id, pc_code, status }` |
+| `agent:event` | A monitoring event is recorded for a session | The monitoring event row |
+| `session:update` | An exam session changes state | `{ session_id, status }` |
+
+The Exam Monitoring page (`/admin/monitoring`) listens for these and
+refreshes without reloading. The live feed itself is server-verified; the
+in-browser behaviour still needs a laptop browser run to confirm.
+
+## 6. The Windows Agent & the Simulator
+
+### The real agent (`windows-agent/`)
+A C++17 Windows service + desktop monitor (named pipe between the two,
+CMake build). On a Windows machine with Visual Studio Build Tools:
+
+```bat
+windows-agent\build.bat
+```
+
+It enrols with the PC's enrolment code, then heartbeats every 5 seconds and
+posts events exactly as §3 describes. **The Windows build has not been run
+from this repo yet** — it needs a Windows machine; do not present it as
+verified until then. The installer scripts live in
+`windows-agent/installer/` (`install.bat` / `uninstall.bat`).
+
+### The simulator (`scripts/agent-simulator.js`)
+A Node script that behaves like the Windows agent, for testing without a
+Windows machine. It needs only Node 18+ (native `fetch`, no extra packages):
+
+```bash
+node scripts/agent-simulator.js <enrolment-code> --events
+# --api <url>      Base API URL (default http://localhost:5000/api)
+# --exitAfter <s>  Stop after N seconds (handy for watching the 15 s offline flip)
+```
+
+It registers, heartbeats every 5 seconds, and with `--events` posts test
+violation events whenever an active session is detected — so the Exam
+Monitoring page can be exercised end to end from this repo alone.
 
