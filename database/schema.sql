@@ -19,6 +19,7 @@ CREATE TABLE users (
   reset_token VARCHAR(100) NULL,               -- password-reset token (Phase 2)
   reset_token_expires DATETIME NULL,           -- token expiry; NULL = no reset pending
   role          ENUM('student','recruiter','admin') NOT NULL,
+  is_active     BOOLEAN NOT NULL DEFAULT 1,    -- admin can deactivate an account (merged 2026-11-16)
   created_at    TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -34,6 +35,9 @@ CREATE TABLE students (
   skills TEXT NULL,                            -- free-text skills, comma-separated
   resume_filename VARCHAR(255) NULL,           -- original uploaded file name
   resume_data MEDIUMTEXT NULL,                 -- base64 PDF resume (no file storage)
+  phone VARCHAR(20) NULL,                      -- student phone (merged 2026-11-16)
+  projects JSON NULL,                          -- [{title, desc?, link?}] (merged 2026-11-16)
+  certifications JSON NULL,                    -- [{name, issuer?, year?}] (merged 2026-11-16)
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
   INDEX idx_students_branch_cgpa (branch, cgpa)
 );
@@ -43,7 +47,11 @@ CREATE TABLE companies (
   id      INT AUTO_INCREMENT PRIMARY KEY,
   name    VARCHAR(120) NOT NULL,
   website VARCHAR(200),
-  sector  VARCHAR(80)
+  sector  VARCHAR(80),
+  description      TEXT NULL,                  -- recruiter-editable company profile (merged 2026-11-16)
+  location         VARCHAR(120) NULL,
+  industry         VARCHAR(80) NULL,
+  hr_contact_email VARCHAR(255) NULL
 );
 
 -- --------------------------------------------------------------- drives --
@@ -97,7 +105,7 @@ CREATE TABLE applications (
   id         INT AUTO_INCREMENT PRIMARY KEY,
   drive_id   INT NOT NULL,
   student_id INT NOT NULL,                      -- FK -> students.user_id
-  status     ENUM('applied','test_taken','shortlisted','rejected','selected') NOT NULL DEFAULT 'applied',
+  status     ENUM('applied','test_taken','shortlisted','rejected','selected','withdrawn') NOT NULL DEFAULT 'applied',
   applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   UNIQUE KEY uq_application (drive_id, student_id),
   FOREIGN KEY (drive_id)   REFERENCES drives(id)   ON DELETE CASCADE,
@@ -270,7 +278,7 @@ CREATE TABLE offer_letters (
   joining_date DATE NULL,
   letter_text  TEXT NULL,
   generated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  status       ENUM('pending', 'accepted', 'declined') NOT NULL DEFAULT 'pending',
+  status       ENUM('pending', 'accepted', 'declined', 'withdrawn') NOT NULL DEFAULT 'pending',
   responded_at TIMESTAMP NULL,
   UNIQUE KEY uq_offer (drive_id, student_id),
   FOREIGN KEY (drive_id)   REFERENCES drives(id) ON DELETE CASCADE,
@@ -395,3 +403,161 @@ JOIN companies c ON c.id = d.company_id
 LEFT JOIN applications a ON a.drive_id = d.id
 LEFT JOIN students s ON s.user_id = a.student_id
 GROUP BY d.id, d.title, c.name;
+
+-- ============================================ EXAM MONITORING (merged 2026-11-16) ==
+-- Physical exam PCs, the Windows agent fleet, proctoring sessions and
+-- telemetry events. Merged from Ishika's repo; see docs/AGENT_API.md and
+-- windows-agent/ for the agent that fills these tables.
+
+-- ------------------------------------------------------------ computers --
+-- One row per physical lab PC enrolled for proctored exams.
+CREATE TABLE computers (
+  id              INT AUTO_INCREMENT PRIMARY KEY,
+  resource_id     INT NOT NULL,
+  pc_code         VARCHAR(50) NOT NULL UNIQUE,
+  enrollment_code VARCHAR(64) NOT NULL UNIQUE,
+  status          ENUM('available','allocated','maintenance') NOT NULL DEFAULT 'available',
+  created_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (resource_id) REFERENCES resources(id) ON DELETE CASCADE,
+  INDEX idx_computers_resource (resource_id),
+  INDEX idx_computers_status (status)
+);
+
+-- -------------------------------------------------------- agent_devices --
+-- Windows agent installation instances authenticated via SHA-256 token hash.
+CREATE TABLE agent_devices (
+  id                 INT AUTO_INCREMENT PRIMARY KEY,
+  computer_id        INT NOT NULL UNIQUE,
+  token_hash         VARCHAR(64) NOT NULL,
+  hostname           VARCHAR(150) NULL,
+  agent_version      VARCHAR(50) NULL,
+  status             ENUM('online','offline') NOT NULL DEFAULT 'offline',
+  last_heartbeat_at      TIMESTAMP NULL,
+  last_foreground_title  VARCHAR(255) NULL,
+  last_foreground_process VARCHAR(255) NULL,
+  registered_at      TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (computer_id) REFERENCES computers(id) ON DELETE CASCADE,
+  INDEX idx_agent_devices_heartbeat (status, last_heartbeat_at),
+  INDEX idx_agent_devices_token (token_hash)
+);
+
+-- -------------------------------------------------------- exam_sessions --
+-- PC-student exam allocations. Concurrency rule: at most one active session per PC.
+CREATE TABLE exam_sessions (
+  id                   INT AUTO_INCREMENT PRIMARY KEY,
+  computer_id          INT NOT NULL,
+  student_id           INT NOT NULL,
+  drive_id             INT NULL,
+  status               ENUM('scheduled','active','ended') NOT NULL DEFAULT 'scheduled',
+  exam_window_keyword  VARCHAR(100) NOT NULL DEFAULT 'CampusFlow',
+  starts_at            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  ends_at              DATETIME NULL,
+  ended_at             DATETIME NULL,
+  created_by           INT NULL,
+  active_computer_id   INT GENERATED ALWAYS AS (IF(status IN ('scheduled', 'active'), computer_id, NULL)) STORED,
+  UNIQUE KEY uq_active_computer_session (active_computer_id),
+  FOREIGN KEY (computer_id) REFERENCES computers(id),
+  FOREIGN KEY (student_id)  REFERENCES students(user_id) ON DELETE CASCADE,
+  FOREIGN KEY (drive_id)    REFERENCES drives(id) ON DELETE SET NULL,
+  FOREIGN KEY (created_by)  REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_exam_sessions_student (student_id),
+  INDEX idx_exam_sessions_computer_status (computer_id, status)
+);
+
+-- ------------------------------------------------- prohibited_processes --
+-- Blacklisted processes during exam sessions (communication/remote access apps).
+CREATE TABLE prohibited_processes (
+  id           INT AUTO_INCREMENT PRIMARY KEY,
+  process_name VARCHAR(100) NOT NULL UNIQUE,
+  added_by     INT NULL,
+  created_at   TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (added_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- ---------------------------------------------------- monitoring_events --
+-- Agent-reported telemetry events (focus loss, window switch, forbidden process).
+CREATE TABLE monitoring_events (
+  id              BIGINT AUTO_INCREMENT PRIMARY KEY,
+  exam_session_id INT NULL,
+  computer_id     INT NOT NULL,
+  event_type      ENUM('FOCUS_LOST','WINDOW_SWITCH','WINDOW_MINIMIZED','WINDOW_CLOSED','PROHIBITED_PROCESS','AGENT_DISCONNECTED','AGENT_RECONNECTED') NOT NULL,
+  window_title    VARCHAR(255) NULL,
+  process_name    VARCHAR(255) NULL,
+  occurred_at     DATETIME(3) NOT NULL,
+  received_at     TIMESTAMP(3) DEFAULT CURRENT_TIMESTAMP(3),
+  review_status   ENUM('new','reviewed','dismissed') NOT NULL DEFAULT 'new',
+  reviewed_by     INT NULL,
+  review_note     TEXT NULL,
+  FOREIGN KEY (exam_session_id) REFERENCES exam_sessions(id) ON DELETE SET NULL,
+  FOREIGN KEY (computer_id)     REFERENCES computers(id) ON DELETE CASCADE,
+  FOREIGN KEY (reviewed_by)     REFERENCES users(id) ON DELETE SET NULL,
+  INDEX idx_events_session_occurred (exam_session_id, occurred_at),
+  INDEX idx_events_computer_occurred (computer_id, occurred_at),
+  INDEX idx_events_status (review_status)
+);
+
+-- -------------------------------------------------------------- os_runs --
+-- One row per OS-lab scheduling run (single algorithm or compare).
+CREATE TABLE os_runs (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  module VARCHAR(64) NOT NULL,          -- e.g. 'cpu-scheduler'
+  algorithm VARCHAR(32) NOT NULL,       -- algorithm name or 'compare'
+  input_json JSON NOT NULL,
+  result_json JSON NOT NULL,
+  created_by INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB;
+
+-- ----------------------------------------------------------- demo_seats --
+-- Scratch table for the race-condition demo (isolated from real bookings).
+CREATE TABLE demo_seats (
+  id BIGINT AUTO_INCREMENT PRIMARY KEY,
+  capacity INT NOT NULL,
+  confirmed INT NOT NULL DEFAULT 0,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- ============================================== EXTRA REPORT VIEWS (merged 2026-11-16) ==
+-- Branch / company / package summaries for routes/reportsExtra.js. They
+-- read `offer_letters` (this repo has no separate `offers` table): a
+-- student counts as placed when their letter is accepted.
+
+-- View: per-branch placement summary
+CREATE OR REPLACE VIEW v_branch_placement AS
+SELECT s.branch,
+       COUNT(DISTINCT s.user_id) AS students,
+       COUNT(DISTINCT a.id) AS applied,
+       COUNT(DISTINCT o.id) AS placed,
+       IF(COUNT(DISTINCT a.id) = 0, 0,
+          ROUND(COUNT(DISTINCT o.id) / COUNT(DISTINCT a.id) * 100, 2)) AS placement_pct
+FROM students s
+LEFT JOIN applications a ON a.student_id = s.user_id
+LEFT JOIN offer_letters o ON o.drive_id = a.drive_id AND o.student_id = a.student_id AND o.status = 'accepted'
+GROUP BY s.branch;
+
+-- View: company funnel summary
+CREATE OR REPLACE VIEW v_company_funnel AS
+SELECT c.id AS company_id,
+       c.name,
+       COUNT(DISTINCT d.id) AS drives,
+       COUNT(DISTINCT a.id) AS applicants,
+       COUNT(DISTINCT CASE WHEN a.status = 'shortlisted' THEN a.id END) AS shortlisted,
+       COUNT(DISTINCT CASE WHEN a.status = 'selected' THEN a.id END) AS selected,
+       COUNT(DISTINCT o.id) AS offers
+FROM companies c
+LEFT JOIN drives d ON d.company_id = c.id
+LEFT JOIN applications a ON a.drive_id = d.id
+LEFT JOIN offer_letters o ON o.drive_id = d.id
+GROUP BY c.id, c.name;
+
+-- View: package statistics per drive
+CREATE OR REPLACE VIEW v_package_stats AS
+SELECT d.id AS drive_id,
+       d.title,
+       MIN(o.package_lpa) AS min_package,
+       MAX(o.package_lpa) AS max_package,
+       AVG(o.package_lpa) AS avg_package
+FROM drives d
+LEFT JOIN offer_letters o ON o.drive_id = d.id
+GROUP BY d.id, d.title;

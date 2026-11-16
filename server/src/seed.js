@@ -564,6 +564,102 @@ async function seed(conn) {
   const profVermaId = resourceIds['Prof. Verma'];
   const drKapoorId = resourceIds['Dr. Kapoor'];
 
+  // ---------- Exam monitoring: computers + prohibited processes ----------
+  // Merged from Ishika's repo 2026-11-16. Five enrolled PCs in each of the
+  // first two labs (the Exam PCs page lists them; the Windows agent in
+  // windows-agent/ enrolls with the enrollment code). The codes are random
+  // per reset — copy the current one from the Exam PCs page when setting
+  // up an agent. The lab_machines rows seeded later (line ~877) are the
+  // live lab-status feed and are separate from these enrolled exam PCs.
+  const crypto = require('crypto');
+  let pcCount = 0;
+  const pcIds = {}; // pc_code -> computers.id (exam sessions below need them)
+  for (const [labId, labName] of [[labAId, 'Lab A'], [labBId, 'Lab B']]) {
+    const prefix = labName.toUpperCase().replace(/\s+/g, '-');
+    for (let i = 1; i <= 5; i++) {
+      const pcCode = `${prefix}-PC${String(i).padStart(2, '0')}`;
+      const enrollCode = `ENROLL-${prefix}-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+      const [pcRes] = await conn.query(
+        'INSERT INTO computers (resource_id, pc_code, enrollment_code, status) VALUES (?, ?, ?, ?)',
+        [labId, pcCode, enrollCode, 'available']
+      );
+      pcIds[pcCode] = pcRes.insertId;
+      pcCount++;
+    }
+  }
+  const defaultProhibited = [
+    'discord.exe',
+    'telegram.exe',
+    'anydesk.exe',
+    'teamviewer.exe',
+    'whatsapp.exe',
+    'slack.exe',
+    'zoom.exe',
+    'chatgpt.exe',
+  ];
+  for (const proc of defaultProhibited) {
+    await conn.query('INSERT IGNORE INTO prohibited_processes (process_name) VALUES (?)', [proc]);
+  }
+
+  // ---------- Exam monitoring: demo sessions, agent devices, events ----------
+  // So the Exam Monitoring page is alive on first load: one exam in
+  // progress right now (Diya on LAB-A-PC02, Data Analyst test), one
+  // scheduled for tomorrow (Aarav on LAB-A-PC01, same test slot as the
+  // seeded bookings), and a few flags for the admin to review.
+  // Demo agent tokens (local demo only — same class as password123):
+  //   LAB-A-PC01 -> dev-agent-token-pc01   (offline: agent not running)
+  //   LAB-A-PC02 -> dev-agent-token-pc02   (online as of the reset; the
+  //   sweeper marks it offline ~15 s after the API boots with no
+  //   heartbeat, which is the honest behaviour for a demo agent).
+  const agentTokenHash = (t) => crypto.createHash('sha256').update(t).digest('hex');
+  await conn.query(
+    `INSERT INTO agent_devices (computer_id, token_hash, hostname, agent_version, status, last_heartbeat_at)
+     VALUES (?, ?, ?, '1.0.0', 'offline', NULL)`,
+    [pcIds['LAB-A-PC01'], agentTokenHash('dev-agent-token-pc01'), 'LAB-A-PC01']
+  );
+  await conn.query(
+    `INSERT INTO agent_devices (computer_id, token_hash, hostname, agent_version, status, last_heartbeat_at)
+     VALUES (?, ?, ?, '1.0.0', 'online', NOW())`,
+    [pcIds['LAB-A-PC02'], agentTokenHash('dev-agent-token-pc02'), 'LAB-A-PC02']
+  );
+  // Scheduled: tomorrow 10:00–11:00, matching the seeded drive-6 test slot.
+  const [sess1] = await conn.query(
+    `INSERT INTO exam_sessions (computer_id, student_id, drive_id, status, exam_window_keyword, starts_at, ends_at, created_by)
+     VALUES (?, ?, ?, 'scheduled', 'CampusFlow', ?, ?, ?)`,
+    [pcIds['LAB-A-PC01'], studentIds[0], drive6, daysFromNow(1, '10:00:00'), daysFromNow(1, '11:00:00'), adminId]
+  );
+  // Active: today 09:00–12:00, Diya's Data Analyst test in progress.
+  const [sess2] = await conn.query(
+    `INSERT INTO exam_sessions (computer_id, student_id, drive_id, status, exam_window_keyword, starts_at, ends_at, created_by)
+     VALUES (?, ?, ?, 'active', 'CampusFlow', ?, ?, ?)`,
+    [pcIds['LAB-A-PC02'], studentIds[1], drive6, daysFromNow(0, '09:00:00'), daysFromNow(0, '12:00:00'), adminId]
+  );
+  // Flags on the active session: three new, one already reviewed.
+  for (const [eventType, title, proc, when, reviewStatus, note] of [
+    ['WINDOW_SWITCH', 'Google Chrome', 'chrome.exe', daysFromNow(0, '09:12:00'), 'new', null],
+    ['FOCUS_LOST', 'Google Chrome', 'chrome.exe', daysFromNow(0, '09:20:00'), 'new', null],
+    ['PROHIBITED_PROCESS', 'Discord', 'discord.exe', daysFromNow(0, '09:35:00'), 'new', null],
+    ['WINDOW_MINIMIZED', 'CampusFlow — Test', 'chrome.exe', daysFromNow(0, '09:05:00'), 'reviewed', 'Checked with the invigilator — the student was only adjusting the window, no concern.'],
+  ]) {
+    await conn.query(
+      `INSERT INTO monitoring_events (exam_session_id, computer_id, event_type, window_title, process_name, occurred_at, review_status, reviewed_by, review_note)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [sess2.insertId, pcIds['LAB-A-PC02'], eventType, title, proc, when, reviewStatus, reviewStatus === 'reviewed' ? adminId : null, note]
+    );
+  }
+  // Lock-table history for the Live Monitor page (the same acquire /
+  // release rows the PC allocator writes when it hands out a seat).
+  for (const [pcCode, when] of [['LAB-A-PC01', daysFromNow(0, '09:00:00')], ['LAB-A-PC02', daysFromNow(0, '08:59:00')]]) {
+    await conn.query(
+      "INSERT INTO lock_events (lock_name, holder, action, wait_ms, created_at) VALUES (?, ?, 'acquire', 3, ?)",
+      [`computer:${pcIds[pcCode]}`, 'admin@campusflow.local', when]
+    );
+    await conn.query(
+      "INSERT INTO lock_events (lock_name, holder, action, wait_ms, created_at) VALUES (?, ?, 'release', 0, ?)",
+      [`computer:${pcIds[pcCode]}`, 'admin@campusflow.local', when]
+    );
+  }
+
   // ---------- Wave 3: pipeline data ----------
   // Percentage the way the app means it: score/total*100 rounded to 2dp
   // (os/pipeline.js submitTest() computes the same: *10000/100 — fixed
@@ -941,8 +1037,11 @@ async function seed(conn) {
   console.log('Seeded: 5 users (admin+recruiters), 24 students, 4 companies, 9 drives,');
   console.log('        112 applications, 3 drive rounds, 64 test questions, 10 resources,');
   console.log('        44 test results, 7 slots, 18 bookings, 11 interview feedback,');
-  console.log('        5 offer letters, 27 notifications, 18 lab machines, 2 manual events.');
+  console.log('        5 offer letters, 27 notifications, 18 lab machines, 2 manual events,');
+  console.log('        10 exam PCs, 8 prohibited processes, 2 exam sessions, 4 monitoring');
+  console.log('        events, 2 agent devices, 4 lock events.');
   console.log('All demo accounts use password: password123');
+  console.log('Demo agent tokens (local demo only): LAB-A-PC01 dev-agent-token-pc01, LAB-A-PC02 dev-agent-token-pc02');
 }
 
 async function main() {

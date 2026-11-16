@@ -58,8 +58,8 @@ async function driveRoster(driveId) {
     `SELECT u.name, u.email, s.roll_no, s.branch, s.cgpa,
             a.status, a.applied_at,
             tr.percentage AS test_percentage,
-            ANY_VALUE(ts.title) AS test_session, ANY_VALUE(ts.starts_at) AS test_at, ANY_VALUE(tr2.name) AS test_venue,
-            ANY_VALUE(iv.title) AS interview_slot, ANY_VALUE(iv.starts_at) AS interview_at, ANY_VALUE(ir.name) AS interview_venue
+            MIN(ts.title) AS test_session, MIN(ts.starts_at) AS test_at, MIN(tr2.name) AS test_venue,
+            MIN(iv.title) AS interview_slot, MIN(iv.starts_at) AS interview_at, MIN(ir.name) AS interview_venue
      FROM applications a
      JOIN students s ON s.user_id = a.student_id
      JOIN users u ON u.id = s.user_id

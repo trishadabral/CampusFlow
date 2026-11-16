@@ -15,12 +15,16 @@ function authenticateToken(req, res, next) {
     return res.status(401).json({ error: 'Invalid or expired token. Please log in again.' });
   }
   pool
-    .query('SELECT id, name, email, role FROM users WHERE id = ?', [payload.id])
+    .query('SELECT id, name, email, role, is_active FROM users WHERE id = ?', [payload.id])
     .then(([rows]) => {
       if (!rows.length) {
         return res.status(401).json({ error: 'This account no longer exists.' });
       }
-      req.user = rows[0]; // {id, name, email, role}
+      const user = rows[0];
+      if (!user.is_active) {
+        return res.status(401).json({ error: 'Your account is deactivated.' });
+      }
+      req.user = { id: user.id, name: user.name, email: user.email, role: user.role };
       next();
     })
     .catch(next);
@@ -50,9 +54,15 @@ function optionalAuth(req, res, next) {
     return next(); // bad token on a public route: treat as anonymous
   }
   pool
-    .query('SELECT id, name, email, role FROM users WHERE id = ?', [payload.id])
+    .query('SELECT id, name, email, role, is_active FROM users WHERE id = ?', [payload.id])
     .then(([rows]) => {
-      if (rows.length) req.user = rows[0];
+      if (rows.length) {
+        const user = rows[0];
+        // A deactivated account stays anonymous on public routes.
+        if (user.is_active) {
+          req.user = { id: user.id, name: user.name, email: user.email, role: user.role };
+        }
+      }
       next();
     })
     .catch(next);

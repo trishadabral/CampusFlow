@@ -7,7 +7,8 @@
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.11.3",
     "nodemailer": "^10.5.0",
-    "pdfkit": "^0.20.2"
+    "pdfkit": "^0.20.2",
+    "socket.io": "^4.8.4"
   },
   "description": "CampusFlow OS backend API (Phase 1) — the placement cell as an operating system",
   "engines": {
@@ -21,7 +22,8 @@
     "db:seed": "node src/seed.js",
     "dev": "node --watch src/index.js",
     "start": "node src/index.js",
-    "db:migrate": "node src/migrate.js"
+    "db:migrate": "node src/migrate.js",
+    "test": "node --test tests/cpu-scheduler.test.js tests/cpu-scheduler-algo.test.js"
   },
   "version": "1.0.0"
 }

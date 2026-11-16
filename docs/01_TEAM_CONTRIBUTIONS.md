@@ -187,6 +187,54 @@ MySQL — see [DEMO_SCRIPT.md](DEMO_SCRIPT.md).
   applications), average package from offer letters, top recruiters; safe
   empty states, never NaN.
 
+## Merged from Ishika's CampusFlow (2026-11-16)
+
+Ishika's repo had grown features this repo did not have; they were merged
+here (locally, uncommitted at the time of writing) with Trisha's dark theme
+and Phase 2 work kept intact. What landed, by owner:
+
+- **Ishika Rawat (M1)** — exam monitoring: `server/src/socket.js`
+  (Socket.IO live feed), `server/src/routes/agent.js` (Windows agent
+  protocol: register / heartbeat / events, SHA-256 token auth, 15 s offline
+  sweeper), `server/src/os/pc-allocator.js` (First Fit + Best Fit lab
+  allocation under a row lock), `windows-agent/` (C++17 Windows service +
+  desktop monitor), `scripts/agent-simulator.js` / `smoke-test.js` /
+  `verify-phase3.js`, `docs/AGENT_API.md`, admin pages Exam Monitoring
+  (`/admin/monitoring`) and Exam PCs (`/admin/exam-pcs`), and the new
+  tables `computers`, `agent_devices`, `exam_sessions`,
+  `monitoring_events`, `prohibited_processes` (migration `migrate_v7.sql`).
+- **Recruiter workspace** — company profile page (`/recruiter/company`),
+  inbox (`/recruiter/inbox`), applicants list with search/sort/pagination,
+  bulk shortlist/reject, per-student offer extension and withdrawal
+  (`server/src/routes/recruiter.js`, adapted onto this repo's
+  `offer_letters` table), resume downloads with access control
+  (`server/src/routes/resumes.js`, still base64-in-DB — no file storage).
+- **Extra reports** — branch / company / package summaries + CSV exports
+  (`server/src/routes/reportsExtra.js`, views `v_branch_placement`,
+  `v_company_funnel`, `v_package_stats`), shown in a "More reports"
+  section on the admin Reports page.
+- **OS lab tools** — CPU scheduling run + compare (`/api/os/schedule`,
+  now also SJF and SRTF — Round-Robin stays out by design), race-condition
+  demo (`/api/os/race-demo`, scratch table `demo_seats`), run log
+  (`os_runs`), corrected simulator tests.
+- **Accounts & profiles** — public sign-up is now student-only (staff
+  accounts are created by an admin from the Users page, which also gains
+  activate/deactivate and password reset); `users.is_active` gate on
+  login and token checks; student profiles gain phone, projects and
+  certifications.
+- **Student journey page** (`/student/journey`) — the full Applied → Test
+  → Result → Interview timeline with offer accept/decline and application
+  withdrawal; test page gains fullscreen and a submit confirmation.
+
+Deliberately **not** merged: Ishika's "Campus Registrar" visual language
+(dark theme kept), the drive/test approval workflow (dormant in her repo —
+nothing ever sets `pending_approval`, and approving a drive would have
+broken applications), her standalone `admin/*.js` sub-routers (unmounted
+dead code with wrong `withTransaction`/`audit_log` signatures — the working
+logic was ported into `admin.js`/`users.js` instead), Round-Robin
+scheduling, disk-based resumes (multer), and the `offers` table (this repo's
+`offer_letters` is the single offer system).
+
 ## How we worked
 
 - One shared repo (`trishadabral/CampusFlow`), feature work in small commits on `main`

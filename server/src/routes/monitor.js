@@ -133,10 +133,30 @@ router.post('/stress', authenticateToken, requireRole('admin'), async (req, res,
     );
 
     const ids = Array.from({ length: n }, (_, i) => firstId + i);
-    const results = await Promise.allSettled(
-      ids.map((id) => bookSeat(slot_id, id, 'stress-test'))
-    );
-    const confirmed = results.filter((r) => r.status === 'fulfilled').length;
+    let confirmed = 0;
+    try {
+      const results = await Promise.allSettled(
+        ids.map((id) => bookSeat(slot_id, id, 'stress-test'))
+      );
+      confirmed = results.filter((r) => r.status === 'fulfilled').length;
+    } finally {
+      // In all outcomes, remove exactly the users created for the stress test
+      // (merged from Ishika's repo 2026-11-16: the old version left up to
+      // 200 throwaway accounts in the database after every run).
+      try {
+        await pool.query('DELETE FROM students WHERE user_id IN (?)', [ids]);
+        await pool.query('DELETE FROM users WHERE id IN (?)', [ids]);
+        // Deleting the temp users cascades their bookings away, so the
+        // slot's counter would otherwise be left claiming seats that no
+        // longer exist. Recompute it from the bookings that remain.
+        await pool.query(
+          "UPDATE slots SET booked_count = (SELECT COUNT(*) FROM bookings WHERE slot_id = ? AND status = 'confirmed') WHERE id = ?",
+          [slot_id, slot_id]
+        );
+      } catch (cleanErr) {
+        console.error('[stress] cleanup error:', cleanErr.message);
+      }
+    }
 
     res.json({ attempted: n, confirmed, rejected: n - confirmed, ms: Date.now() - t0 });
   } catch (err) {

@@ -14,8 +14,11 @@ import Drives from './pages/student/Drives.jsx';
 import DriveDetail from './pages/student/DriveDetail.jsx';
 import MyBookings from './pages/student/MyBookings.jsx';
 import StudentProfile from './pages/student/StudentProfile.jsx';
+import StudentJourney from './pages/student/StudentJourney.jsx';
 import TestTaker from './pages/student/TestTaker.jsx';
 import RecruiterDashboard from './pages/recruiter/RecruiterDashboard.jsx';
+import RecruiterCompany from './pages/recruiter/RecruiterCompany.jsx';
+import RecruiterInbox from './pages/recruiter/RecruiterInbox.jsx';
 import MyDrives from './pages/recruiter/MyDrives.jsx';
 import RecruiterDriveDetail from './pages/recruiter/RecruiterDriveDetail.jsx';
 import OfferLetter from './pages/recruiter/OfferLetter.jsx';
@@ -28,6 +31,8 @@ import ResourceCalendar from './pages/admin/ResourceCalendar.jsx';
 import AuditLog from './pages/admin/AuditLog.jsx';
 import Reports from './pages/admin/Reports.jsx';
 import Users from './pages/admin/Users.jsx';
+import ExamMonitoring from './pages/admin/ExamMonitoring.jsx';
+import ExamPcs from './pages/admin/ExamPcs.jsx';
 
 const HOME = { admin: '/admin', recruiter: '/recruiter', student: '/student' };
 
@@ -60,6 +65,7 @@ export default function App() {
         <Route path="tests/:driveId" element={<TestTaker />} />
         <Route path="bookings" element={<MyBookings />} />
         <Route path="profile" element={<StudentProfile />} />
+        <Route path="journey" element={<StudentJourney />} />
       </Route>
 
       <Route path="/recruiter" element={<ProtectedRoute role="recruiter"><Layout /></ProtectedRoute>}>
@@ -68,6 +74,8 @@ export default function App() {
         <Route path="drives/new" element={<NewDriveWizard />} />
         <Route path="drives/:id" element={<RecruiterDriveDetail />} />
         <Route path="offers/:id" element={<OfferLetter />} />
+        <Route path="company" element={<RecruiterCompany />} />
+        <Route path="inbox" element={<RecruiterInbox />} />
       </Route>
 
       <Route path="/admin" element={<ProtectedRoute role="admin"><Layout /></ProtectedRoute>}>
@@ -79,6 +87,8 @@ export default function App() {
         <Route path="audit" element={<AuditLog />} />
         <Route path="reports" element={<Reports />} />
         <Route path="users" element={<Users />} />
+        <Route path="monitoring" element={<ExamMonitoring />} />
+        <Route path="exam-pcs" element={<ExamPcs />} />
       </Route>
 
       <Route path="*" element={<RoleRedirect />} />

@@ -49,6 +49,11 @@ export default function Reports() {
   const [rosterDrive, setRosterDrive] = useState(null);
   const [roster, setRoster] = useState([]);
   const [rosterLoading, setRosterLoading] = useState(false);
+  // Extra reports (merged from Ishika's repo 2026-11-16): branch, company
+  // and package summaries with CSV downloads.
+  const [branches, setBranches] = useState([]);
+  const [companies, setCompanies] = useState([]);
+  const [packages, setPackages] = useState([]);
   // Interactive viewer state: search text, status filter, column sort.
   const [rosterSearch, setRosterSearch] = useState('');
   const [rosterStatus, setRosterStatus] = useState('all');
@@ -78,6 +83,21 @@ export default function Reports() {
         // Statistics are a bonus panel — a failure here never blocks the report.
         setStats(null);
       }
+      // Extra reports — same treatment: a failure never blocks the page.
+      try {
+        const [b, c, p] = await Promise.all([
+          reportsApi.branches(),
+          reportsApi.companies(),
+          reportsApi.packages(),
+        ]);
+        setBranches(b.data?.branches ?? []);
+        setCompanies(c.data?.companies ?? []);
+        setPackages(p.data?.packages ?? []);
+      } catch {
+        setBranches([]);
+        setCompanies([]);
+        setPackages([]);
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -88,6 +108,21 @@ export default function Reports() {
         kind === 'placement'
           ? await reportsApi.exportPlacementCsv()
           : await reportsApi.exportRosterCsv(driveId);
+      downloadBlob(data, filename);
+      toast('Download started.', 'success');
+    } catch (err) {
+      toast(errMsg(err, 'Could not download the file.'), 'error');
+    }
+  };
+
+  const downloadExtraCsv = async (kind, filename) => {
+    try {
+      const { data } =
+        kind === 'branches'
+          ? await reportsApi.branchesCsv()
+          : kind === 'companies'
+            ? await reportsApi.companiesCsv()
+            : await reportsApi.packagesCsv();
       downloadBlob(data, filename);
       toast('Download started.', 'success');
     } catch (err) {
@@ -291,6 +326,64 @@ export default function Reports() {
           ]}
           rows={rows}
         />
+      </div>
+
+      {/* More reports — branch, company and package summaries (merged 2026-11-16) */}
+      <div className="bg-[#12172A] rounded-2xl shadow-sm border border-white/10 p-6">
+        <h2 className="font-semibold text-slate-100 mb-1">More reports</h2>
+        <p className="text-xs text-slate-400 mb-5">Placement by branch and company, and the package range on each drive. “Placed” means the student accepted an offer.</p>
+        <div className="grid gap-6 lg:grid-cols-3">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-slate-300">By branch</h3>
+              <button onClick={() => downloadExtraCsv('branches', 'branches-report.csv')} className="text-xs font-bold text-[#FF5C38] hover:text-[#FF8A6B]">Download CSV</button>
+            </div>
+            <DataTable
+              emptyHint="No branch data yet."
+              columns={[
+                { key: 'branch', label: 'Branch', render: (r) => <span className="font-medium text-slate-100">{r.branch}</span> },
+                { key: 'students', label: 'Students', render: (r) => r.students ?? 0 },
+                { key: 'applied', label: 'Applied', render: (r) => r.applied ?? 0 },
+                { key: 'placed', label: 'Placed', render: (r) => r.placed ?? 0 },
+                { key: 'placement_pct', label: 'Placed %', render: (r) => r.placement_pct != null ? `${Number(r.placement_pct).toFixed(1)}%` : '—' },
+              ]}
+              rows={branches}
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-slate-300">By company</h3>
+              <button onClick={() => downloadExtraCsv('companies', 'companies-report.csv')} className="text-xs font-bold text-[#FF5C38] hover:text-[#FF8A6B]">Download CSV</button>
+            </div>
+            <DataTable
+              emptyHint="No company data yet."
+              columns={[
+                { key: 'name', label: 'Company', render: (r) => <span className="font-medium text-slate-100">{r.name}</span> },
+                { key: 'drives', label: 'Drives', render: (r) => r.drives ?? 0 },
+                { key: 'applicants', label: 'Applicants', render: (r) => r.applicants ?? 0 },
+                { key: 'shortlisted', label: 'Shortlisted', render: (r) => r.shortlisted ?? 0 },
+                { key: 'offers', label: 'Offers', render: (r) => r.offers ?? 0 },
+              ]}
+              rows={companies}
+            />
+          </div>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-bold text-slate-300">Packages by drive</h3>
+              <button onClick={() => downloadExtraCsv('packages', 'packages-report.csv')} className="text-xs font-bold text-[#FF5C38] hover:text-[#FF8A6B]">Download CSV</button>
+            </div>
+            <DataTable
+              emptyHint="No package data yet."
+              columns={[
+                { key: 'title', label: 'Drive', render: (r) => <span className="font-medium text-slate-100">{r.title}</span> },
+                { key: 'min_package', label: 'Lowest', render: (r) => r.min_package != null ? `₹${Number(r.min_package)} LPA` : '—' },
+                { key: 'avg_package', label: 'Average', render: (r) => r.avg_package != null ? `₹${Number(r.avg_package).toFixed(2)} LPA` : '—' },
+                { key: 'max_package', label: 'Highest', render: (r) => r.max_package != null ? `₹${Number(r.max_package)} LPA` : '—' },
+              ]}
+              rows={packages}
+            />
+          </div>
+        </div>
       </div>
 
       {rosterDrive && (

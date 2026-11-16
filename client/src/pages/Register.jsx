@@ -1,5 +1,7 @@
-// Register — create an account and go straight to your portal.
-// The server creates the account (and the student profile, for students)
+// Register — create a student account and go straight to your portal.
+// Public sign-up is student-only (merged from Ishika's repo 2026-11-16):
+// anyone could previously pick "admin" here. Staff accounts are created
+// by an admin from the Users page. The server creates the student profile
 // and returns a token, so a new account signs in immediately.
 
 import React, { useState } from 'react';
@@ -20,7 +22,6 @@ export default function Register() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [role, setRole] = useState('student');
   const [rollNo, setRollNo] = useState('');
   const [branch, setBranch] = useState('');
   const [cgpa, setCgpa] = useState('');
@@ -36,7 +37,7 @@ export default function Register() {
       toast('Please fill in your name, email and password.', 'error');
       return;
     }
-    if (role === 'student' && (!rollNo.trim() || !branch.trim() || cgpa === '' || !gradYear)) {
+    if (!rollNo.trim() || !branch.trim() || cgpa === '' || !gradYear) {
       toast('Students also need a roll number, branch, CGPA and graduating year.', 'error');
       return;
     }
@@ -46,16 +47,11 @@ export default function Register() {
         name: name.trim(),
         email,
         password,
-        role,
-        ...(role === 'student'
-          ? {
-              roll_no: rollNo.trim(),
-              branch: branch.trim(),
-              cgpa: Number(cgpa),
-              backlogs: Number(backlogs) || 0,
-              graduation_year: Number(gradYear),
-            }
-          : {}),
+        roll_no: rollNo.trim(),
+        branch: branch.trim(),
+        cgpa: Number(cgpa),
+        backlogs: Number(backlogs) || 0,
+        graduation_year: Number(gradYear),
       });
       toast(`Welcome, ${u.name}! Your account is ready.`, 'success');
       navigate(HOME[u.role] ?? '/student', { replace: true });
@@ -69,8 +65,8 @@ export default function Register() {
   return (
     <div className="min-h-screen flex items-center justify-center p-8">
       <div className="w-full max-w-md">
-        <h1 className="font-display text-2xl font-bold text-slate-100">Create your account</h1>
-        <p className="text-sm text-slate-400 mt-1 mb-8">One account for the whole placement journey.</p>
+        <h1 className="font-display text-2xl font-bold text-slate-100">Create your student account</h1>
+        <p className="text-sm text-slate-400 mt-1 mb-8">One account for the whole placement journey. Recruiters and admins get their accounts from the placement office.</p>
 
         <form onSubmit={submit} className="space-y-4">
           <div>
@@ -85,17 +81,8 @@ export default function Register() {
             <label className={labelCls}>Password</label>
             <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 6 characters" className={inputCls} />
           </div>
-          <div>
-            <label className={labelCls}>I am a…</label>
-            <select value={role} onChange={(e) => setRole(e.target.value)} className={inputCls}>
-              <option value="student">Student</option>
-              <option value="recruiter">Recruiter</option>
-              <option value="admin">Admin</option>
-            </select>
-          </div>
 
-          {role === 'student' && (
-            <div className="rounded-2xl border border-white/10 bg-[#0B0E1A] p-4 space-y-4">
+          <div className="rounded-2xl border border-white/10 bg-[#0B0E1A] p-4 space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className={labelCls}>Roll number</label>
@@ -119,7 +106,6 @@ export default function Register() {
                 <input type="number" min="2000" max="2100" value={gradYear} onChange={(e) => setGradYear(e.target.value)} className={inputCls} />
               </div>
             </div>
-          )}
 
           <button
             type="submit" disabled={busy}

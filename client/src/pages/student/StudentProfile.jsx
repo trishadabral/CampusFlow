@@ -20,13 +20,38 @@ function readFileAsDataUrl(file) {
   });
 }
 
+// Projects / certifications are stored as JSON arrays on the server and
+// edited here as one-per-line text: "Title — description" and
+// "Name — issuer — year" (merged from Ishika's repo 2026-11-16).
+const projectsToText = (arr) =>
+  (arr || []).map((p) => [p.title, p.desc].filter(Boolean).join(' — ')).join('\n');
+const certsToText = (arr) =>
+  (arr || []).map((c) => [c.name, c.issuer, c.year].filter((x) => x !== undefined && x !== null && x !== '').join(' — ')).join('\n');
+const textToProjects = (text) =>
+  text.split('\n').map((l) => l.trim()).filter(Boolean).map((line) => {
+    const [title, ...rest] = line.split('—');
+    const desc = rest.join('—').trim();
+    return desc ? { title: title.trim(), desc } : { title: title.trim() };
+  });
+const textToCerts = (text) =>
+  text.split('\n').map((l) => l.trim()).filter(Boolean).map((line) => {
+    const [name, issuer, year] = line.split('—').map((s) => s.trim());
+    const cert = { name };
+    if (issuer) cert.issuer = issuer;
+    if (year) cert.year = year;
+    return cert;
+  });
+
 export default function StudentProfile() {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [profile, setProfile] = useState(null);
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
   const [skills, setSkills] = useState('');
+  const [projectsText, setProjectsText] = useState('');
+  const [certsText, setCertsText] = useState('');
   const [photo, setPhoto] = useState(null); // data URL preview (or null = no photo)
   const [photoChanged, setPhotoChanged] = useState(false);
   const [resumeName, setResumeName] = useState(null);
@@ -40,7 +65,10 @@ export default function StudentProfile() {
       .then(({ data }) => {
         setProfile(data);
         setName(data.name ?? '');
+        setPhone(data.phone ?? '');
         setSkills(data.skills ?? '');
+        setProjectsText(projectsToText(data.projects));
+        setCertsText(certsToText(data.certifications));
         setPhoto(data.photo_data ?? null);
         setResumeName(data.resume_filename ?? null);
       })
@@ -94,7 +122,13 @@ export default function StudentProfile() {
     }
     setSaving(true);
     try {
-      const payload = { name: name.trim(), skills };
+      const payload = {
+        name: name.trim(),
+        phone: phone.trim() || null,
+        skills,
+        projects: textToProjects(projectsText),
+        certifications: textToCerts(certsText),
+      };
       if (photoChanged) payload.photo_data = photo;
       if (resumeChanged) payload.resume_data = resumeData;
       if (resumeChanged) payload.resume_filename = resumeName;
@@ -110,6 +144,18 @@ export default function StudentProfile() {
       toast(errMsg(err, 'Could not save your profile.'), 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const removeResume = async () => {
+    try {
+      await studentApi.deleteResume();
+      setResumeName(null);
+      setResumeData(null);
+      setResumeChanged(false);
+      toast('Resume removed.', 'success');
+    } catch (err) {
+      toast(errMsg(err, 'Could not remove your resume.'), 'error');
     }
   };
 
@@ -177,7 +223,7 @@ export default function StudentProfile() {
           </div>
         </div>
 
-        {/* Name + email */}
+        {/* Name + email + phone */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">Full name</label>
@@ -186,6 +232,10 @@ export default function StudentProfile() {
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-1.5">Email</label>
             <input type="email" value={profile.email ?? ''} disabled className={`${inputCls} bg-[#0B0E1A] text-slate-400`} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1.5">Phone</label>
+            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="e.g. 98765 43210" className={inputCls} />
           </div>
         </div>
 
@@ -213,6 +263,30 @@ export default function StudentProfile() {
           <p className="text-xs text-slate-400 mt-1.5">Separate skills with commas.</p>
         </div>
 
+        {/* Projects */}
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1.5">Projects</label>
+          <textarea
+            value={projectsText} onChange={(e) => setProjectsText(e.target.value)}
+            placeholder={"Campus placement portal — built the booking flow\nLibrary app — issue and return tracking"}
+            rows={3}
+            className={inputCls}
+          />
+          <p className="text-xs text-slate-400 mt-1.5">One project per line: title, then an em dash (—), then a short description.</p>
+        </div>
+
+        {/* Certifications */}
+        <div>
+          <label className="block text-sm font-medium text-slate-300 mb-1.5">Certifications</label>
+          <textarea
+            value={certsText} onChange={(e) => setCertsText(e.target.value)}
+            placeholder={"AWS Cloud Practitioner — Amazon — 2025\nJava Programming — NPTEL — 2024"}
+            rows={3}
+            className={inputCls}
+          />
+          <p className="text-xs text-slate-400 mt-1.5">One per line: name — issuer — year.</p>
+        </div>
+
         {/* Resume */}
         <div>
           <div className="text-sm font-medium text-slate-300 mb-1.5">Resume</div>
@@ -226,7 +300,7 @@ export default function StudentProfile() {
               )}
               <button
                 type="button"
-                onClick={() => { setResumeData(null); setResumeName(null); setResumeChanged(true); }}
+                onClick={removeResume}
                 className="text-xs font-medium text-rose-400 hover:text-rose-300"
               >
                 Remove

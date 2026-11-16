@@ -6,12 +6,13 @@ const jwt = require('jsonwebtoken');
 const pool = require('../dbms/db');
 const { sendMail } = require('../mailer');
 const { authenticateToken } = require('../middleware/auth');
+const { validate } = require('../middleware/validate');
 
 const router = express.Router();
-const VALID_ROLES = ['student', 'recruiter', 'admin'];
 
 function signToken(user) {
-  return jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET || 'change-me', {
+  if (!process.env.JWT_SECRET) throw new Error('JWT_SECRET is not configured.');
+  return jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
     expiresIn: '8h',
   });
 }
@@ -20,22 +21,25 @@ function publicUser(row) {
   return { id: row.id, name: row.name, email: row.email, role: row.role };
 }
 
-// POST /auth/register
-router.post('/register', async (req, res, next) => {
+// POST /auth/register — public registration creates students only.
+// Merged from Ishika's repo 2026-11-16: the old version let anyone pick
+// their own role, including admin — a hole flagged in the 2026-11-15
+// completion pass. Staff accounts are now created by an admin through
+// POST /api/users. Any role in the request body is ignored.
+router.post('/register', validate({required:['name','email','password','roll_no','branch','cgpa','graduation_year'], allowed:['name','email','password','roll_no','branch','cgpa','backlogs','graduation_year','role']}), async (req, res, next) => {
   try {
-    const { name, email, password, role, roll_no, branch, cgpa, backlogs, graduation_year } =
+    const { name, email, password, roll_no, branch, cgpa, backlogs, graduation_year } =
       req.body || {};
-    if (!name || !email || !password || !role) {
-      return res.status(400).json({ error: 'Name, email, password and role are required.' });
+    if (!name || !email || !password) {
+      return res.status(400).json({ error: 'Name, email and password are required.' });
     }
-    if (!VALID_ROLES.includes(role)) {
-      return res.status(400).json({ error: 'Role must be one of: student, recruiter, admin.' });
-    }
-    if (role === 'student' && (!roll_no || !branch || cgpa == null || !graduation_year)) {
+    if (!roll_no || !branch || cgpa == null || !graduation_year) {
       return res
         .status(400)
         .json({ error: 'Students must also provide roll_no, branch, cgpa and graduation_year.' });
     }
+    // Public self-registration is strictly restricted to students. Any role in body is ignored.
+    const role = 'student';
 
     const conn = await pool.getConnection();
     try {
@@ -51,12 +55,10 @@ router.post('/register', async (req, res, next) => {
         'INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)',
         [name, email, hash, role]
       );
-      if (role === 'student') {
-        await conn.query(
-          'INSERT INTO students (user_id, roll_no, branch, cgpa, backlogs, graduation_year) VALUES (?, ?, ?, ?, ?, ?)',
-          [uRes.insertId, roll_no, branch, cgpa, backlogs || 0, graduation_year]
-        );
-      }
+      await conn.query(
+        'INSERT INTO students (user_id, roll_no, branch, cgpa, backlogs, graduation_year) VALUES (?, ?, ?, ?, ?, ?)',
+        [uRes.insertId, roll_no, branch, cgpa, backlogs || 0, graduation_year]
+      );
       await conn.commit();
       const user = { id: uRes.insertId, name, email, role };
       res.status(201).json({ token: signToken(user), user });
@@ -78,20 +80,23 @@ router.post('/register', async (req, res, next) => {
 });
 
 // POST /auth/login
-router.post('/login', async (req, res, next) => {
+router.post('/login', validate({required:['email','password'], allowed:['email','password']}), async (req, res, next) => {
   try {
     const { email, password } = req.body || {};
     if (!email || !password) {
       return res.status(400).json({ error: 'Email and password are required.' });
     }
     const [rows] = await pool.query(
-      'SELECT id, name, email, role, password_hash FROM users WHERE email = ?',
+      'SELECT id, name, email, role, password_hash, is_active FROM users WHERE email = ?',
       [email]
     );
     const row = rows[0];
     const ok = row && (await bcrypt.compare(password, row.password_hash));
     if (!ok) {
       return res.status(401).json({ error: 'Invalid email or password.' });
+    }
+    if (!row.is_active) {
+      return res.status(401).json({ error: 'Your account is deactivated.' });
     }
     const user = publicUser(row);
     res.json({ token: signToken(user), user });

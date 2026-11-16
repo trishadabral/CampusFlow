@@ -72,6 +72,19 @@ export const student = {
   profile: () => api.get('/student/profile'),
   updateProfile: (data) => api.put('/student/profile', data),
   resume: () => api.get('/student/profile/resume', { responseType: 'blob' }),
+  deleteResume: () => api.delete('/student/profile/resume'),
+  withdrawApplication: (id) => api.patch(`/student/applications/${id}/withdraw`),
+};
+
+// --- Recruiter workspace & applicants (merged from Ishika's repo 2026-11-16) ---
+export const recruiter = {
+  getCompany: () => api.get('/recruiter/company'),
+  updateCompany: (data) => api.put('/recruiter/company', data),
+  getApplicants: (driveId, params) => api.get(`/recruiter/drives/${driveId}/applicants`, { params }),
+  bulkApplicants: (driveId, payload) => api.post(`/recruiter/drives/${driveId}/applicants/bulk`, payload),
+  getOffers: (driveId) => api.get(`/recruiter/drives/${driveId}/offers`),
+  createOffer: (driveId, data) => api.post(`/recruiter/drives/${driveId}/offers`, data),
+  withdrawOffer: (id) => api.post(`/recruiter/offers/${id}/withdraw`),
 };
 
 // --- Notifications ---
@@ -86,6 +99,11 @@ export const admin = {
   overview: () => api.get('/admin/overview'),
   schedule: () => api.get('/admin/schedule'),
   roster: (driveId) => api.get(`/admin/drive/${driveId}/roster`),
+  // OS Lab scheduling (merged from Ishika's repo 2026-11-16)
+  osScheduleRun: (payload) => api.post('/os/schedule/run', payload),
+  osScheduleCompare: (payload) => api.post('/os/schedule/compare', payload),
+  // OS Lab race demo
+  raceDemo: (payload) => api.post('/os/race-demo', payload),
 };
 
 // --- Slots & bookings (M3) ---
@@ -153,6 +171,29 @@ export const reports = {
   exportRosterCsv: (driveId) => api.get(`/reports/drives/${driveId}/roster.csv`, { responseType: 'blob' }),
   exportDrivePdf: (driveId) => api.get(`/reports/drives/${driveId}/report.pdf`, { responseType: 'blob' }),
   placementStats: () => api.get('/reports/placement-stats'),
+  // Extra OS-lab reports (merged from Ishika's repo 2026-11-16)
+  branches: () => api.get('/reports/branches'),
+  companies: () => api.get('/reports/companies'),
+  packages: () => api.get('/reports/packages'),
+  branchesCsv: () => api.get('/reports/branches.csv', { responseType: 'blob' }),
+  companiesCsv: () => api.get('/reports/companies.csv', { responseType: 'blob' }),
+  packagesCsv: () => api.get('/reports/packages.csv', { responseType: 'blob' }),
+};
+
+// --- Exam PC Monitoring & Supervision (merged from Ishika's repo 2026-11-16) ---
+export const examMonitoring = {
+  pcs: () => api.get('/admin/monitoring/pcs'),
+  events: (params) => api.get('/admin/monitoring/events', { params }),
+  reviewEvent: (id, data) => api.patch(`/admin/monitoring/events/${id}`, data),
+  allocateSession: (data) => api.post('/admin/exam-sessions', data),
+  startSession: (id) => api.post(`/admin/exam-sessions/${id}/start`),
+  endSession: (id) => api.post(`/admin/exam-sessions/${id}/end`),
+  computers: () => api.get('/admin/computers'),
+  createComputer: (data) => api.post('/admin/computers', data),
+  regenerateEnrollment: (id) => api.post(`/admin/computers/${id}/regenerate-enrollment`),
+  prohibitedProcesses: () => api.get('/admin/prohibited-processes'),
+  addProhibitedProcess: (data) => api.post('/admin/prohibited-processes', data),
+  removeProhibitedProcess: (id) => api.delete(`/admin/prohibited-processes/${id}`),
 };
 
 // --- Offer letters (Phase 2, M2) ---
@@ -168,7 +209,10 @@ export const companies = {
   create: (data) => api.post('/companies', data),
 };
 
-// --- Users (M1) — admin directory (backend may expose /users) ---
+// --- Users (M1) — admin directory ---
 export const users = {
   list: () => api.get('/users'),
+  create: (data) => api.post('/users', data),
+  setActive: (id, isActive) => api.patch(`/users/${id}/active`, { is_active: isActive }),
+  resetPassword: (id) => api.post(`/users/${id}/reset-password`),
 };

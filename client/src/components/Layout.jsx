@@ -13,12 +13,15 @@ const NAV = {
     { to: '/student', label: 'Dashboard', end: true },
     { to: '/student/drives', label: 'Find Drives' },
     { to: '/student/bookings', label: 'My Schedule' },
+    { to: '/student/journey', label: 'My Journey' },
     { to: '/student/profile', label: 'My Profile' },
   ],
   recruiter: [
     { to: '/recruiter', label: 'Dashboard', end: true },
     { to: '/recruiter/drives', label: 'My Drives' },
     { to: '/recruiter/drives/new', label: 'Add Drive', highlight: true },
+    { to: '/recruiter/company', label: 'Company' },
+    { to: '/recruiter/inbox', label: 'Inbox' },
   ],
   admin: [
     { to: '/admin', label: 'Control Center', end: true },
@@ -26,14 +29,17 @@ const NAV = {
     { to: '/admin/resources', label: 'Resources' },
     { to: '/admin/reports', label: 'Reports' },
     { to: '/admin/users', label: 'Users' },
+    { to: '/admin/monitoring', label: 'Exam Monitoring' },
+    { to: '/admin/exam-pcs', label: 'Exam PCs' },
   ],
 };
 
 const TITLES = {
-  '/student': 'My Applications', '/student/drives': 'Find Drives', '/student/bookings': 'My Schedule', '/student/profile': 'My Profile',
-  '/recruiter': 'Dashboard', '/recruiter/drives': 'My Drives', '/recruiter/drives/new': 'Add Drive',
+  '/student': 'My Applications', '/student/drives': 'Find Drives', '/student/bookings': 'My Schedule', '/student/profile': 'My Profile', '/student/journey': 'My Journey',
+  '/recruiter': 'Dashboard', '/recruiter/drives': 'My Drives', '/recruiter/drives/new': 'Add Drive', '/recruiter/company': 'Company', '/recruiter/inbox': 'Inbox',
   '/admin': 'Control Center', '/admin/monitor': 'Live Monitor', '/admin/scheduling': 'Interview Scheduler',
   '/admin/resources': 'Resources', '/admin/calendar': 'Room calendar', '/admin/audit': 'Activity log', '/admin/reports': 'Reports', '/admin/users': 'Users',
+  '/admin/monitoring': 'Exam Monitoring', '/admin/exam-pcs': 'Exam PCs',
 };
 
 function LogoMark() {

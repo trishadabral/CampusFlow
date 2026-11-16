@@ -67,7 +67,7 @@ router.post(
 router.get(
   '/:offerId',
   authenticateToken,
-  requireRole('recruiter', 'admin'),
+  requireRole('student', 'recruiter', 'admin'),
   async (req, res, next) => {
     try {
       const [rows] = await pool.query(
@@ -84,8 +84,11 @@ router.get(
         [req.params.offerId]
       );
       if (!rows.length) return res.status(404).json({ error: 'Offer letter not found.' });
+      if (req.user.role === 'student' && rows[0].student_id !== req.user.id) {
+        return res.status(403).json({ error: 'This offer was made to someone else.' });
+      }
       const [driveRows] = await pool.query('SELECT created_by FROM drives WHERE id = ?', [rows[0].drive_id]);
-      if (req.user.role !== 'admin' && driveRows[0]?.created_by !== req.user.id) {
+      if (req.user.role === 'recruiter' && driveRows[0]?.created_by !== req.user.id) {
         return res.status(403).json({ error: 'Only the recruiter who created this drive (or an admin) can view this letter.' });
       }
       const r = rows[0];

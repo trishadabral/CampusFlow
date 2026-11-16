@@ -76,6 +76,33 @@ async function getDrive(id) {
   return rows[0] || null;
 }
 
+// Shared ownership check for recruiter-scoped endpoints (routes/recruiter.js):
+// admins may manage any drive; a recruiter may only manage drives they
+// created. Merged from Ishika's repo 2026-11-16.
+async function assertDriveOwnership(req, driveId) {
+  const drive = await getDrive(driveId);
+  if (!drive) {
+    const err = new Error('Drive not found.');
+    err.status = 404;
+    throw err;
+  }
+  if (req.user && req.user.role === 'admin') {
+    return drive;
+  }
+  if (req.user && req.user.role === 'recruiter') {
+    const isOwned = drive.created_by === req.user.id;
+    if (!isOwned) {
+      const err = new Error('You are not authorized to manage this drive.');
+      err.status = 403;
+      throw err;
+    }
+    return drive;
+  }
+  const err = new Error('Access denied.');
+  err.status = 403;
+  throw err;
+}
+
 function toDateOrNull(v) {
   if (!v) return null;
   const d = new Date(v);
@@ -1080,3 +1107,4 @@ router.post(
 );
 
 module.exports = router;
+module.exports.assertDriveOwnership = assertDriveOwnership;

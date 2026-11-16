@@ -6,6 +6,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { drives as drivesApi, errMsg } from '../../api.js';
 import { formatDate } from '../../utils.js';
 import { useToast } from '../../components/Toast.jsx';
+import ConfirmDialog from '../../components/ConfirmDialog.jsx';
 
 function mmss(totalSeconds) {
   const s = Math.max(0, Math.floor(totalSeconds));
@@ -34,6 +35,9 @@ export default function TestTaker() {
   const submitRef = useRef(null);
   const inTestRef = useRef(false);
   const lastSwitchRef = useRef(0);
+  // Fullscreen + submit confirmation (merged from Ishika's repo 2026-11-16).
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
   useEffect(() => {
     drivesApi.getTest(driveId)
@@ -57,6 +61,10 @@ export default function TestTaker() {
     if (submitting) return;
     setSubmitting(true);
     clearInterval(timerRef.current);
+    // Leave fullscreen so the result screen is not stuck in it.
+    if (document.fullscreenElement) {
+      try { await document.exitFullscreen(); } catch { /* already exited */ }
+    }
     try {
       // Answers and the tab-switch count come from refs: the timer and the
       // tab-switch listener call the submit captured at an earlier render,
@@ -92,6 +100,24 @@ export default function TestTaker() {
   };
 
   useEffect(() => () => clearInterval(timerRef.current), []);
+
+  // Fullscreen toggle (merged from Ishika's repo 2026-11-16). Entering or
+  // leaving fullscreen does not blur the window, so it never counts as a
+  // tab switch; Esc exits fullscreen and is also safe.
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (document.fullscreenElement) await document.exitFullscreen();
+      else await document.documentElement.requestFullscreen();
+    } catch {
+      toast('Fullscreen is not available in this browser.', 'error');
+    }
+  };
 
   // "Test in progress" as a ref, so the switch listener below always sees
   // the current state without re-registering.
@@ -232,6 +258,15 @@ export default function TestTaker() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={toggleFullscreen}
+            className="cf-btn-secondary !px-3 !py-2"
+            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+            aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+          >
+            {isFullscreen ? '⤢ Exit' : '⛶ Fullscreen'}
+          </button>
           {tabSwitches > 0 && (
             <span className="font-mono-tight text-sm font-bold px-3 py-2 rounded-xl bg-amber-500/10 text-amber-300 border border-amber-500/30">
               ⚠ {tabSwitches}/{TAB_SWITCH_LIMIT} tab switches
@@ -293,11 +328,25 @@ export default function TestTaker() {
         {index < questions.length - 1 ? (
           <button onClick={() => setIndex((i) => i + 1)} className="cf-btn-primary">Next →</button>
         ) : (
-          <button onClick={() => submit()} disabled={submitting} className="cf-btn-success">
+          <button onClick={() => setShowSubmitConfirm(true)} disabled={submitting} className="cf-btn-success">
             {submitting ? 'Submitting…' : '✓ Submit test'}
           </button>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={showSubmitConfirm}
+        onClose={() => setShowSubmitConfirm(false)}
+        onConfirm={() => {
+          setShowSubmitConfirm(false);
+          submit();
+        }}
+        title="Submit your test?"
+        message={`You have answered ${answered} of ${questions.length} questions. You cannot change answers after submitting.`}
+        confirmText="Submit test"
+        variant="primary"
+        loading={submitting}
+      />
     </div>
   );
 }

@@ -5,7 +5,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { drives as drivesApi, reports as reportsApi, slots as slotsApi, resources as resourcesApi, errMsg } from '../../api.js';
+import { drives as drivesApi, reports as reportsApi, slots as slotsApi, resources as resourcesApi, recruiter as recruiterApi, errMsg } from '../../api.js';
 import { formatDate } from '../../utils.js';
 import { useToast } from '../../components/Toast.jsx';
 import Badge from '../../components/Badge.jsx';
@@ -62,6 +62,11 @@ export default function RecruiterDriveDetail() {
   const [offerList, setOfferList] = useState([]);
   const [offerPackage, setOfferPackage] = useState('');
   const [offerJoining, setOfferJoining] = useState('');
+  // Bulk shortlist/reject + per-student offers (merged from Ishika's repo 2026-11-16).
+  const [checked, setChecked] = useState([]);
+  const [offerFor, setOfferFor] = useState(null);
+  const [offerPkg, setOfferPkg] = useState('');
+  const [offerJoin, setOfferJoin] = useState('');
   const [driveStats, setDriveStats] = useState(null);
   const [driveSlots, setDriveSlots] = useState([]);
   const [slotsError, setSlotsError] = useState(null);
@@ -189,6 +194,55 @@ export default function RecruiterDriveDetail() {
       setApps(a ?? []);
     } catch (err) {
       toast(errMsg(err, 'Could not mark as selected.'), 'error');
+    }
+  };
+
+  // Bulk shortlist / reject (merged from Ishika's repo 2026-11-16). The
+  // server only moves applications that are still in a state the action
+  // allows and reports how many actually changed.
+  const bulkAction = async (action) => {
+    if (checked.length === 0) return;
+    try {
+      const { data } = await recruiterApi.bulkApplicants(id, { application_ids: checked, action });
+      toast(data.message ?? `${data.updated} application${data.updated !== 1 ? 's' : ''} updated.`, 'success');
+      setChecked([]);
+      const { data: a } = await drivesApi.applications(id);
+      setApps(a ?? []);
+    } catch (err) {
+      toast(errMsg(err, 'Could not update those applications.'), 'error');
+    }
+  };
+
+  // Extend a single offer to a shortlisted/selected student (merged from
+  // Ishika's repo 2026-11-16, rewritten onto this app's offer_letters).
+  const extendOffer = async (e) => {
+    e.preventDefault();
+    if (!offerFor) return;
+    try {
+      await recruiterApi.createOffer(id, {
+        student_id: offerFor.student.id,
+        package_lpa: offerPkg ? Number(offerPkg) : undefined,
+        joining_date: offerJoin || undefined,
+      });
+      toast(`Offer extended to ${offerFor.student.name}.`, 'success');
+      setOfferFor(null);
+      setOfferPkg('');
+      setOfferJoin('');
+      const { data: list } = await drivesApi.offers(id);
+      setOfferList(list ?? []);
+    } catch (err) {
+      toast(errMsg(err, 'Could not extend that offer.'), 'error');
+    }
+  };
+
+  const withdrawOffer = async (offerId, studentName) => {
+    try {
+      await recruiterApi.withdrawOffer(offerId);
+      toast(`Offer to ${studentName} withdrawn.`, 'success');
+      const { data: list } = await drivesApi.offers(id);
+      setOfferList(list ?? []);
+    } catch (err) {
+      toast(errMsg(err, 'Could not withdraw that offer.'), 'error');
     }
   };
 
@@ -363,8 +417,42 @@ export default function RecruiterDriveDetail() {
           apps.length === 0 ? (
             <EmptyState title="No applications yet" message="Once students apply, everyone passing your eligibility criteria shows up here automatically." />
           ) : (
+            <>
+              {checked.length > 0 && (
+                <div className="flex items-center gap-3 mb-4 flex-wrap">
+                  <span className="text-sm text-slate-300">{checked.length} selected</span>
+                  <button type="button" onClick={() => bulkAction('shortlist')} className="cf-btn-secondary !py-1.5">Shortlist</button>
+                  <button type="button" onClick={() => bulkAction('reject')} className="cf-btn-secondary !py-1.5">Reject</button>
+                  <button type="button" onClick={() => setChecked([])} className="text-xs text-slate-400 hover:text-slate-200">Clear</button>
+                </div>
+              )}
+              {offerFor && (
+                <form onSubmit={extendOffer} className="flex gap-3 mb-4 flex-wrap items-end bg-[#12172A] border border-white/10 rounded-xl px-4 py-3">
+                  <span className="text-sm text-slate-200">Extend offer to <strong>{offerFor.student.name}</strong></span>
+                  <div className="w-36">
+                    <label className="cf-label" htmlFor="ext-pkg">Package (LPA)</label>
+                    <input id="ext-pkg" type="number" min="0" step="0.1" className="cf-input" value={offerPkg} onChange={(e) => setOfferPkg(e.target.value)} placeholder={drive.package_lpa != null ? String(drive.package_lpa) : 'e.g. 8.5'} />
+                  </div>
+                  <div className="w-44">
+                    <label className="cf-label" htmlFor="ext-join">Joining date</label>
+                    <input id="ext-join" type="date" className="cf-input" value={offerJoin} onChange={(e) => setOfferJoin(e.target.value)} />
+                  </div>
+                  <button type="submit" className="cf-btn-primary">Send offer</button>
+                  <button type="button" className="cf-btn-secondary" onClick={() => setOfferFor(null)}>Cancel</button>
+                </form>
+              )}
             <DataTable
               columns={[
+                {
+                  key: 'select', label: '', render: (a) => (
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${a.student?.name}`}
+                      checked={checked.includes(a.id)}
+                      onChange={(e) => setChecked(e.target.checked ? [...checked, a.id] : checked.filter((x) => x !== a.id))}
+                    />
+                  ),
+                },
                 { key: 'student', label: 'Student', render: (a) => <span className="font-medium text-slate-100">{a.student?.name}</span> },
                 { key: 'roll', label: 'Roll no', render: (a) => a.student?.roll_no ?? '—' },
                 { key: 'branch', label: 'Branch', render: (a) => a.student?.branch ?? '—' },
@@ -377,15 +465,25 @@ export default function RecruiterDriveDetail() {
                 ) : <span className="text-slate-300">—</span> },
                 { key: 'status', label: 'Status', render: (a) => <Badge variant={STATUS_VARIANT[a.status] ?? 'neutral'}>{a.status.replace('_', ' ')}</Badge> },
                 {
-                  key: 'action', label: '', render: (a) => a.status === 'shortlisted' ? (
-                    <button onClick={() => markSelected(a.student.id, a.student.name)} className="text-xs font-semibold text-emerald-300 hover:text-emerald-300 border border-emerald-500/30 hover:border-emerald-500/40 rounded-lg px-3 py-1.5 bg-emerald-500/10">
-                      Select ✓
-                    </button>
-                  ) : null,
+                  key: 'action', label: '', render: (a) => (
+                    <div className="flex gap-2">
+                      {a.status === 'shortlisted' && (
+                        <button onClick={() => markSelected(a.student.id, a.student.name)} className="text-xs font-semibold text-emerald-300 hover:text-emerald-300 border border-emerald-500/30 hover:border-emerald-500/40 rounded-lg px-3 py-1.5 bg-emerald-500/10">
+                          Select ✓
+                        </button>
+                      )}
+                      {(a.status === 'shortlisted' || a.status === 'selected') && (
+                        <button onClick={() => { setOfferFor(a); setOfferPkg(drive.package_lpa != null ? String(drive.package_lpa) : ''); }} className="text-xs font-semibold text-cyan-300 border border-cyan-500/30 hover:border-cyan-500/40 rounded-lg px-3 py-1.5 bg-cyan-500/10">
+                          Extend offer
+                        </button>
+                      )}
+                    </div>
+                  ),
                 },
               ]}
               rows={apps}
             />
+            </>
           )
         )}
 
@@ -566,7 +664,7 @@ export default function RecruiterDriveDetail() {
               {(() => {
                 const accepted = offerList.filter((o) => o.status === 'accepted').length;
                 const declined = offerList.filter((o) => o.status === 'declined').length;
-                const pending = offerList.filter((o) => o.status !== 'accepted' && o.status !== 'declined').length;
+                const pending = offerList.filter((o) => o.status === 'pending').length;
                 return `${accepted} accepted · ${declined} declined · ${pending} still deciding`;
               })()}
             </p>
@@ -579,9 +677,18 @@ export default function RecruiterDriveDetail() {
                   ? <Badge variant="success">Accepted</Badge>
                   : o.status === 'declined'
                     ? <Badge variant="danger">Declined</Badge>
-                    : <Badge variant="neutral">Still deciding</Badge> },
+                    : o.status === 'withdrawn'
+                      ? <Badge variant="neutral">Withdrawn</Badge>
+                      : <Badge variant="neutral">Still deciding</Badge> },
                 { key: 'generated', label: 'Generated', render: (o) => o.generated_at ? formatDate(o.generated_at) : '—' },
                 { key: 'view', label: '', render: (o) => <Link to={`/recruiter/offers/${o.id}`} className="text-sm font-semibold text-[#FF5C38] hover:text-[#FF8A6B]">View →</Link> },
+                {
+                  key: 'withdraw', label: '', render: (o) => o.status === 'pending' ? (
+                    <button onClick={() => withdrawOffer(o.id, o.student_name)} className="text-xs font-semibold text-rose-300 border border-rose-500/30 hover:border-rose-500/40 rounded-lg px-3 py-1.5 bg-rose-500/10">
+                      Withdraw
+                    </button>
+                  ) : null,
+                },
               ]}
               rows={offerList}
             />
