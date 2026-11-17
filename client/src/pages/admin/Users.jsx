@@ -1,8 +1,6 @@
 // M1 — Users: admin directory of accounts (privilege rings: admin > recruiter > student).
 // Admins can create recruiter/admin accounts here (public sign-up is
-// student-only), deactivate accounts, and reset a password — merged from
-// Ishika's repo 2026-11-16 (fixed: correct withTransaction and audit_log
-// columns, no double responses).
+// student-only), deactivate accounts, and reset a password.
 
 import React, { useEffect, useState } from 'react';
 import { users as usersApi, errMsg } from '../../api.js';

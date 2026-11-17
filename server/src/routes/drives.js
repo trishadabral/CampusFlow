@@ -78,7 +78,7 @@ async function getDrive(id) {
 
 // Shared ownership check for recruiter-scoped endpoints (routes/recruiter.js):
 // admins may manage any drive; a recruiter may only manage drives they
-// created. Merged from Ishika's repo 2026-11-16.
+// created.
 async function assertDriveOwnership(req, driveId) {
   const drive = await getDrive(driveId);
   if (!drive) {

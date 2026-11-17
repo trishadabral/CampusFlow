@@ -1,7 +1,6 @@
-// Login — the app's front page, redesigned 2026-11-17 to the reference
-// Trisha sent (Campus_Flow_Login_Portal.png): very dark navy, a campus
-// photo along the bottom-left, thin cyan/purple corner arcs, huge
-// "Campus Flow" headline on the left, sign-in card on the right.
+// Login — the app's front page: very dark navy, a campus photo along
+// the bottom-left, thin cyan/purple corner arcs, huge "Campus Flow"
+// headline on the left, sign-in card on the right.
 // Demo accounts (seeded): admin@campusflow.local / priya@techcorp.com /
 // aarav@student.local — password: password123. The photo is a remote
 // Unsplash URL on purpose: no binary file may go into the repo (the
@@ -13,8 +12,7 @@ import { useAuth } from '../auth.jsx';
 import { useToast } from '../components/Toast.jsx';
 import { errMsg } from '../api.js';
 
-// Dark campus building, verified loading (200, image/jpeg) with a
-// browser-like referer. Layered under a heavy navy overlay in the page.
+// Dark campus building, layered under a heavy navy overlay in the page.
 const CAMPUS_PHOTO =
   'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=1600&q=80';
 

@@ -76,7 +76,7 @@ export const student = {
   withdrawApplication: (id) => api.patch(`/student/applications/${id}/withdraw`),
 };
 
-// --- Recruiter workspace & applicants (merged from Ishika's repo 2026-11-16) ---
+// --- Recruiter workspace & applicants ---
 export const recruiter = {
   getApplicants: (driveId, params) => api.get(`/recruiter/drives/${driveId}/applicants`, { params }),
   bulkApplicants: (driveId, payload) => api.post(`/recruiter/drives/${driveId}/applicants/bulk`, payload),
@@ -97,7 +97,7 @@ export const admin = {
   overview: () => api.get('/admin/overview'),
   schedule: () => api.get('/admin/schedule'),
   roster: (driveId) => api.get(`/admin/drive/${driveId}/roster`),
-  // OS Lab scheduling (merged from Ishika's repo 2026-11-16)
+  // OS Lab scheduling
   osScheduleRun: (payload) => api.post('/os/schedule/run', payload),
   osScheduleCompare: (payload) => api.post('/os/schedule/compare', payload),
   // OS Lab race demo
@@ -166,13 +166,13 @@ export const reports = {
   driveAnalytics: (driveId) => api.get(`/reports/drives/${driveId}/analytics`),
   exportDrivePdf: (driveId) => api.get(`/reports/drives/${driveId}/report.pdf`, { responseType: 'blob' }),
   placementStats: () => api.get('/reports/placement-stats'),
-  // Extra OS-lab reports (merged from Ishika's repo 2026-11-16)
+  // Extra OS-lab reports
   branches: () => api.get('/reports/branches'),
   companies: () => api.get('/reports/companies'),
   packages: () => api.get('/reports/packages'),
 };
 
-// --- Exam PC Monitoring & Supervision (merged from Ishika's repo 2026-11-16) ---
+// --- Exam PC Monitoring & Supervision ---
 export const examMonitoring = {
   pcs: () => api.get('/admin/monitoring/pcs'),
   events: (params) => api.get('/admin/monitoring/events', { params }),

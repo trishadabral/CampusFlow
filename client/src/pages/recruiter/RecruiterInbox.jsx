@@ -1,7 +1,6 @@
 // Recruiter inbox — the recruiter's notifications, newest first.
-// Merged from Ishika's repo 2026-11-16 and rewritten in this app's dark
-// theme. Notifications here carry only title, body, link and time —
-// there is no `type` or `details` field in this app's notifications.
+// Notifications here carry only title, body, link and time — there is
+// no `type` or `details` field.
 import React, { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { notifications, errMsg } from '../../api.js';

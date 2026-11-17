@@ -45,8 +45,7 @@ export default function Reports() {
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
   const [stats, setStats] = useState(null);
-  // Extra reports (merged from Ishika's repo 2026-11-16): branch, company
-  // and package summaries.
+  // Extra reports: branch, company and package summaries.
   const [branches, setBranches] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [packages, setPackages] = useState([]);

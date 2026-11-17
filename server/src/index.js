@@ -66,10 +66,9 @@ app.use('/api/student', require('./routes/student'));
 app.use('/api/notifications', require('./routes/notifications'));
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/admin/audit', require('./routes/audit'));
-// Merged from Ishika's repo 2026-11-16: recruiter workspace, resume
-// downloads with access control, the Windows agent protocol, and the OS-lab
-// run/compare + race-demo endpoints (mounted at the paths client api.js
-// calls — see those route files for why the mount points matter).
+// Recruiter workspace, resume downloads with access control, the
+// Windows agent protocol, and the OS-lab run/compare + race-demo
+// endpoints (mounted at the paths client api.js calls).
 app.use('/api/recruiter', require('./routes/recruiter'));
 app.use('/api/resumes', require('./routes/resumes'));
 app.use('/api/agent', agentApi.router);

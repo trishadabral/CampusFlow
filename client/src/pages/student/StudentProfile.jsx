@@ -22,7 +22,7 @@ function readFileAsDataUrl(file) {
 
 // Projects / certifications are stored as JSON arrays on the server and
 // edited here as one-per-line text: "Title — description" and
-// "Name — issuer — year" (merged from Ishika's repo 2026-11-16).
+// "Name — issuer — year".
 const projectsToText = (arr) =>
   (arr || []).map((p) => [p.title, p.desc].filter(Boolean).join(' — ')).join('\n');
 const certsToText = (arr) =>

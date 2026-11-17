@@ -85,10 +85,10 @@ function parseJsonArray(value) {
   }
 }
 
-// Validate the projects array from the profile form (merged from Ishika's
-// repo 2026-11-16): at most 10, each with a title (max 100 chars), an
-// optional description (max 500) and link (max 255). Returns the JSON
-// string to store, or null when the field was not sent.
+// Validate the projects array from the profile form: at most 10, each
+// with a title (max 100 chars), an optional description (max 500) and
+// link (max 255). Returns the JSON string to store, or null when the
+// field was not sent.
 function validateProjects(projects) {
   if (projects === undefined || projects === null) return null;
   if (!Array.isArray(projects)) {
@@ -126,9 +126,9 @@ function validateProjects(projects) {
   return JSON.stringify(projects);
 }
 
-// Validate the certifications array (merged from Ishika's repo 2026-11-16):
-// at most 10, each with a name (max 100 chars), optional issuer (max 100)
-// and year. Returns the JSON string to store, or null when not sent.
+// Validate the certifications array: at most 10, each with a name (max
+// 100 chars), optional issuer (max 100) and year. Returns the JSON
+// string to store, or null when not sent.
 function validateCertifications(certifications) {
   if (certifications === undefined || certifications === null) return null;
   if (!Array.isArray(certifications)) {
@@ -164,9 +164,9 @@ function validateCertifications(certifications) {
 // PUT /student/profile — edit name, skills, photo and resume.
 // Only the fields sent are changed. Photo: image data URL, max ~2 MB.
 // Resume: PDF data URL, max ~5 MB; the file name is stored with it.
-// Phone, projects and certifications are also editable here (merged from
-// Ishika's repo 2026-11-16). Skills stays a plain comma-separated string
-// in this repo (Ishika stored it as JSON); projects/certifications are JSON.
+// Phone, projects and certifications are also editable here. Skills
+// stays a plain comma-separated string; projects/certifications are
+// stored as JSON.
 router.put('/profile', authenticateToken, requireRole('student'), async (req, res, next) => {
   const conn = await pool.getConnection();
   try {
@@ -218,8 +218,8 @@ router.put('/profile', authenticateToken, requireRole('student'), async (req, re
       if (!filenameToStore.toLowerCase().endsWith('.pdf')) filenameToStore += '.pdf';
     }
 
-    // Phone / projects / certifications (merged from Ishika's repo): validated
-    // up front so a bad value fails before any write happens.
+    // Phone / projects / certifications: validated up front so a bad
+    // value fails before any write happens.
     let phoneToStore = null;
     let phoneTouched = false;
     if (phone !== undefined) {
@@ -355,9 +355,8 @@ router.delete('/profile/resume', authenticateToken, requireRole('student'), asyn
 });
 
 // PATCH /student/applications/:id/withdraw — take back an application while
-// it is still 'applied' or 'test_taken'. Merged from Ishika's repo
-// 2026-11-16; needs the 'withdrawn' value on applications.status
-// (database/schema.sql, migrate_v7.sql).
+// it is still 'applied' or 'test_taken'. Needs the 'withdrawn' value on
+// applications.status (database/schema.sql, migrate_v7.sql).
 router.patch('/applications/:id/withdraw', authenticateToken, requireRole('student'), async (req, res, next) => {
   try {
     const appId = parseInt(req.params.id, 10);

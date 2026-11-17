@@ -565,12 +565,12 @@ async function seed(conn) {
   const drKapoorId = resourceIds['Dr. Kapoor'];
 
   // ---------- Exam monitoring: computers + prohibited processes ----------
-  // Merged from Ishika's repo 2026-11-16. Five enrolled PCs in each of the
-  // first two labs (the Exam PCs page lists them; the Windows agent in
-  // windows-agent/ enrolls with the enrollment code). The codes are random
-  // per reset — copy the current one from the Exam PCs page when setting
-  // up an agent. The lab_machines rows seeded later (line ~877) are the
-  // live lab-status feed and are separate from these enrolled exam PCs.
+  // Five enrolled PCs in each of the first two labs (the Exam PCs page
+  // lists them; the Windows agent in windows-agent/ enrolls with the
+  // enrollment code). The codes are random per reset — copy the current
+  // one from the Exam PCs page when setting up an agent. The lab_machines
+  // rows seeded later (line ~877) are the live lab-status feed and are
+  // separate from these enrolled exam PCs.
   const crypto = require('crypto');
   let pcCount = 0;
   const pcIds = {}; // pc_code -> computers.id (exam sessions below need them)

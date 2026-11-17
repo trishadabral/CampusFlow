@@ -62,7 +62,7 @@ export default function RecruiterDriveDetail() {
   const [offerList, setOfferList] = useState([]);
   const [offerPackage, setOfferPackage] = useState('');
   const [offerJoining, setOfferJoining] = useState('');
-  // Bulk shortlist/reject + per-student offers (merged from Ishika's repo 2026-11-16).
+  // Bulk shortlist/reject + per-student offers.
   const [checked, setChecked] = useState([]);
   const [offerFor, setOfferFor] = useState(null);
   const [offerPkg, setOfferPkg] = useState('');
@@ -197,9 +197,9 @@ export default function RecruiterDriveDetail() {
     }
   };
 
-  // Bulk shortlist / reject (merged from Ishika's repo 2026-11-16). The
-  // server only moves applications that are still in a state the action
-  // allows and reports how many actually changed.
+  // Bulk shortlist / reject. The server only moves applications that
+  // are still in a state the action allows and reports how many
+  // actually changed.
   const bulkAction = async (action) => {
     if (checked.length === 0) return;
     try {
@@ -213,8 +213,7 @@ export default function RecruiterDriveDetail() {
     }
   };
 
-  // Extend a single offer to a shortlisted/selected student (merged from
-  // Ishika's repo 2026-11-16, rewritten onto this app's offer_letters).
+  // Extend a single offer to a shortlisted/selected student.
   const extendOffer = async (e) => {
     e.preventDefault();
     if (!offerFor) return;

@@ -1,13 +1,9 @@
 // server/src/routes/admin/os-race-demo.js
 // Admin race-condition demonstration endpoint.
-// Merged from Ishika's repo 2026-11-16, fixed:
 // - Route path is '/' (mounted at /api/os/race-demo in index.js, matching
-//   what client api.js calls). In Ishika's repo it was '/race-demo'
-//   mounted under /api/admin/os/race-demo, so the client call
-//   /api/os/race-demo hit nothing.
-// - The safe-mode branch called withTransaction(pool, ...) — this repo's
-//   withTransaction takes (work, actorId), not (pool, work). Fixed to
-//   withTransaction(async conn => ...).
+//   what client api.js calls).
+// - The safe-mode branch calls withTransaction(async conn => ...) —
+//   withTransaction takes (work, actorId), not (pool, work).
 
 const express = require('express');
 const pool = require('../../dbms/db');

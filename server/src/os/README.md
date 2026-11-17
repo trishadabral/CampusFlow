@@ -12,7 +12,7 @@ comment states the concept, and the code is the demo.
 | `pipeline.js` | **Batch-job scheduling.** Applications queue up; the engine drains the queue as jobs — test sessions batched into labs, interviews timetabled rotating across panels × rooms. | Akansha | `POST /api/drives/:id/schedule-tests`, `POST /api/drives/:id/publish-results` |
 | `lab-status.js` | **Lab liveness for the scheduler.** Counts recently-reported free machines per lab from the C++ lab agent's reports; the scheduler prefers labs whose machines are actually up. | Trisha | `scheduleTestSessions` in `pipeline.js` |
 | `deadlock-demo.js` | **Deadlock detection + recovery.** Two pretend bookings wait on each other's seats; a wait-for graph cycle is detected and the younger booking is asked to wait so the other can finish. In-memory only — no real data is touched. | Trisha | `POST /api/monitor/deadlock-demo`, Live Monitor demo |
-| `pc-allocator.js` | **Lab-PC allocation (First Fit + Best Fit).** Hands out an exam PC for a session under a row lock, so two sessions can never grab the same PC; also writes the lock-event rows the Live Monitor shows. Merged from Ishika's repo 2026-11-16. | Ishika | `POST /api/admin/exam-sessions`, Exam Monitoring / Exam PCs |
+| `pc-allocator.js` | **Lab-PC allocation (First Fit + Best Fit).** Hands out an exam PC for a session under a row lock, so two sessions can never grab the same PC; also writes the lock-event rows the Live Monitor shows. | Ishika | `POST /api/admin/exam-sessions`, Exam Monitoring / Exam PCs |
 
 **Viva one-liners:**
 - *Why is the DB lock the mutex, not a Node mutex?* — Node is multi-process/multi-instance;

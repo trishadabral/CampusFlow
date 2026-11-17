@@ -22,10 +22,8 @@ function publicUser(row) {
 }
 
 // POST /auth/register — public registration creates students only.
-// Merged from Ishika's repo 2026-11-16: the old version let anyone pick
-// their own role, including admin — a hole flagged in the 2026-11-15
-// completion pass. Staff accounts are now created by an admin through
-// POST /api/users. Any role in the request body is ignored.
+// Staff accounts are created by an admin through POST /api/users.
+// Any role in the request body is ignored.
 router.post('/register', validate({required:['name','email','password','roll_no','branch','cgpa','graduation_year'], allowed:['name','email','password','roll_no','branch','cgpa','backlogs','graduation_year','role']}), async (req, res, next) => {
   try {
     const { name, email, password, roll_no, branch, cgpa, backlogs, graduation_year } =

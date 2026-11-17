@@ -1,7 +1,6 @@
 // Register — create a student account and go straight to your portal.
-// Public sign-up is student-only (merged from Ishika's repo 2026-11-16):
-// anyone could previously pick "admin" here. Staff accounts are created
-// by an admin from the Users page. The server creates the student profile
+// Public sign-up is student-only: staff accounts are created by an
+// admin from the Users page. The server creates the student profile
 // and returns a token, so a new account signs in immediately.
 
 import React, { useState } from 'react';

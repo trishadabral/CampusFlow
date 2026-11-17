@@ -1,7 +1,5 @@
 // Exam Monitoring — live view of exam PCs, agent status, and flagged
-// events. Merged from Ishika's repo 2026-11-16 and rewritten in this
-// app's dark theme. Fixes in the port: the server emits 'agent:status'
-// and 'session:update' (not 'agent:heartbeat' / 'session:change'), event
+// events. The server emits 'agent:status' and 'session:update', event
 // rows carry `occurred_at`, review actions are only 'reviewed' /
 // 'dismissed', and PCs expose `session_id` (not `active_session_id`).
 // Flags need human review — they are not proof of cheating.

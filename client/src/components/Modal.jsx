@@ -1,7 +1,6 @@
-// Modal dialog, dark theme. Merged from Ishika's repo 2026-11-16 and
-// restyled to this app's dark theme (navy panel, coral accent). Used by
-// the exam PCs page, the test submit confirmation, and anywhere else a
-// dialog is needed. Closes on Escape or backdrop click.
+// Modal dialog (navy panel, coral accent). Used by the exam PCs page,
+// the test submit confirmation, and anywhere else a dialog is needed.
+// Closes on Escape or backdrop click.
 import React, { useEffect, useRef } from 'react';
 
 export default function Modal({

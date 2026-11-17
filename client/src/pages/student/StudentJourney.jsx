@@ -1,8 +1,7 @@
 // My Journey — every drive the student applied to, as a step-by-step
 // timeline, with offers to answer and applications to withdraw.
-// Merged from Ishika's repo 2026-11-16 and rewritten in this app's dark
-// theme, driven by this app's own /student/journey endpoint (which
-// returns per-item `steps` rendered here with the shared Stepper).
+// Driven by the /student/journey endpoint (which returns per-item
+// `steps` rendered here with the shared Stepper).
 import React, { useCallback, useEffect, useState } from 'react';
 import { student, offers, errMsg } from '../../api.js';
 import { useToast } from '../../components/Toast.jsx';

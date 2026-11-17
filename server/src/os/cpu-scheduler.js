@@ -6,8 +6,6 @@
 //   Averages rounded to 1 decimal.
 // Round-robin was deliberately removed: preemptive time-slicing makes no sense
 // for interviews (you can't pause a candidate mid-interview and resume later).
-// SJF and SRTF were merged from Ishika's repo 2026-11-16 (her simulate also
-// returned the three extra metrics below); fcfs/priority are unchanged.
 
 function round1(n) {
   return Math.round(n * 10) / 10;

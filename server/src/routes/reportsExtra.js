@@ -1,10 +1,10 @@
 // server/src/routes/reportsExtra.js
 // Extra reporting endpoints for OS Lab (branches, companies, packages) and CSV export.
-// Merged from Ishika's repo 2026-11-16. The three views live in
-// database/schema.sql (and migrate_v7.sql); they read `offer_letters`,
-// not a separate `offers` table, so "placed"/"offers" counts come from
-// accepted/pending letters. Recruiter scoping uses the recruiter's own
-// drives (users has no company link in this repo).
+// The three views live in database/schema.sql (and migrate_v7.sql);
+// they read `offer_letters`, not a separate `offers` table, so
+// "placed"/"offers" counts come from accepted/pending letters.
+// Recruiter scoping uses the recruiter's own drives (users has no
+// company link in this repo).
 
 const express = require('express');
 const pool = require('../dbms/db');

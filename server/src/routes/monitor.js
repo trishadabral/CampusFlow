@@ -140,9 +140,7 @@ router.post('/stress', authenticateToken, requireRole('admin'), async (req, res,
       );
       confirmed = results.filter((r) => r.status === 'fulfilled').length;
     } finally {
-      // In all outcomes, remove exactly the users created for the stress test
-      // (merged from Ishika's repo 2026-11-16: the old version left up to
-      // 200 throwaway accounts in the database after every run).
+      // In all outcomes, remove exactly the users created for the stress test.
       try {
         await pool.query('DELETE FROM students WHERE user_id IN (?)', [ids]);
         await pool.query('DELETE FROM users WHERE id IN (?)', [ids]);

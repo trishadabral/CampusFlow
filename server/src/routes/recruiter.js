@@ -1,11 +1,10 @@
 // Recruiter API: company profile, applicants management (search/filter/sort/pagination/bulk),
 // and drive offers subsystem (extend/withdraw).
 //
-// Merged from Ishika's repo 2026-11-16. Adapted to Trisha's tree:
 // - Offers live in `offer_letters` (not a separate `offers` table), so the
 //   extend/list/withdraw endpoints below read and write offer_letters and
-//   build the letter text with os/offer-letter.js. A per-student offer is
-//   new here: drives.js only generates letters in bulk for selected
+//   build the letter text with os/offer-letter.js. Per-student offers are
+//   extended here; drives.js only generates letters in bulk for selected
 //   students. `note` is accepted in the request body but not stored —
 //   offer_letters has no note column.
 // - Applicants list reports `has_resume` from the base64 resume column

@@ -1,10 +1,7 @@
 // server/src/routes/admin/os-schedule.js
 // Admin OS scheduling endpoints (run a single algorithm or compare all).
-// Merged from Ishika's repo 2026-11-16, fixed:
 // - Route paths are '/run' and '/compare' (mounted at /api/os/schedule in
-//   index.js, matching what client api.js calls). In Ishika's repo these
-//   were '/schedule/run' mounted under /api/admin/os/schedule, so the
-//   client call /api/os/schedule/run hit nothing in either place.
+//   index.js, matching what client api.js calls).
 // - 'rr' is NOT in the compare list: Round-Robin was deliberately removed
 //   from this app (preemptive time-slicing makes no sense for interviews),
 //   so the lab compares fcfs / priority / sjf / srtf only.

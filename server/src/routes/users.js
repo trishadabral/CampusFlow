@@ -37,7 +37,7 @@ router.get('/', authenticateToken, requireRole('admin'), async (req, res, next) 
 
 // POST /users — admin creates a recruiter or admin account. Students sign
 // up themselves (POST /auth/register is student-only), so this is the only
-// way to create staff accounts. Merged from Ishika's repo 2026-11-16.
+// way to create staff accounts.
 router.post('/', authenticateToken, requireRole('admin'), async (req, res, next) => {
   try {
     const { name, email, password, role } = req.body || {};
@@ -69,11 +69,8 @@ router.post('/', authenticateToken, requireRole('admin'), async (req, res, next)
 
 // PATCH /users/:id/active — deactivate or reactivate an account.
 // Deactivated accounts cannot log in (see middleware/auth.js).
-// Merged from Ishika's repo 2026-11-16 and FIXED: her version called
-// withTransaction(pool, ...) — this repo's withTransaction takes
-// (work, actorId) — and wrote audit rows with a column (entity_type)
-// that does not exist; both are corrected here, and the double-response
-// bug (answering from inside the transaction callback) is gone.
+// withTransaction takes (work, actorId); answer only after the
+// transaction callback returns, never from inside it.
 router.patch('/:id/active', authenticateToken, requireRole('admin'), async (req, res, next) => {
   try {
     const targetId = Number(req.params.id);
@@ -130,8 +127,7 @@ router.patch('/:id/active', authenticateToken, requireRole('admin'), async (req,
 });
 
 // POST /users/:id/reset-password — admin sets a fresh temporary password
-// for a user and gets it back once, to pass on out-of-band. Merged from
-// Ishika's repo 2026-11-16 (audit columns fixed as above).
+// for a user and gets it back once, to pass on out-of-band.
 router.post('/:id/reset-password', authenticateToken, requireRole('admin'), async (req, res, next) => {
   try {
     const targetId = Number(req.params.id);

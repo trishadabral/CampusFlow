@@ -5,9 +5,9 @@
 // (c) a recruiter whose company has a drive the student applied to.
 // Any other caller receives 403 Forbidden.
 //
-// Merged from Ishika's repo 2026-11-16, adapted: this repo stores resumes
-// as base64 in students.resume_data (no file storage), so the file is
-// served from the database instead of read from disk.
+// Resumes are stored as base64 in students.resume_data (no file
+// storage), so the file is served from the database instead of read
+// from disk.
 
 const express = require('express');
 const pool = require('../dbms/db');

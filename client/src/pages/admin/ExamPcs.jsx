@@ -1,8 +1,7 @@
 // Exam PCs — manage the enrolled exam computers, allocate exam
-// sessions to them, and keep the list of blocked processes. Merged from
-// Ishika's repo 2026-11-16 and rewritten in this app's dark theme. Fix
-// in the port: creating a computer sends `resource_id` (the server
-// rejects `lab_resource_id` with a 400).
+// sessions to them, and keep the list of blocked processes. Creating a
+// computer sends `resource_id` (the server rejects `lab_resource_id`
+// with a 400).
 import React, { useCallback, useEffect, useState } from 'react';
 import { examMonitoring, users, drives, resources, errMsg } from '../../api.js';
 import { useToast } from '../../components/Toast.jsx';

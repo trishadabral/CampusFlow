@@ -71,7 +71,7 @@ router.get('/drive/:id/roster', async (req, res, next) => {
 });
 
 // ===========================================================================
-// Exam PC Monitoring & Telemetry (merged from Ishika's repo 2026-11-16)
+// Exam PC Monitoring & Telemetry
 // Physical exam PCs, the Windows agent fleet, and proctoring events.
 // ===========================================================================
 
@@ -440,11 +440,5 @@ router.get('/drives', async (req, res, next) => {
     next(err);
   }
 });
-
-// NOTE: Ishika's repo also had POST /api/admin/drives/:id/approve and
-// /reject, but they were never reachable in her app: nothing ever sets a
-// drive to 'pending_approval' (creation defaults to 'open'), and approving
-// would set status 'approved', which the apply endpoint rejects because it
-// requires 'open'. Deliberately not ported — see the merge report.
 
 module.exports = router;

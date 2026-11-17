@@ -35,7 +35,7 @@ export default function TestTaker() {
   const submitRef = useRef(null);
   const inTestRef = useRef(false);
   const lastSwitchRef = useRef(0);
-  // Fullscreen + submit confirmation (merged from Ishika's repo 2026-11-16).
+  // Fullscreen + submit confirmation.
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false);
 
@@ -101,9 +101,9 @@ export default function TestTaker() {
 
   useEffect(() => () => clearInterval(timerRef.current), []);
 
-  // Fullscreen toggle (merged from Ishika's repo 2026-11-16). Entering or
-  // leaving fullscreen does not blur the window, so it never counts as a
-  // tab switch; Esc exits fullscreen and is also safe.
+  // Fullscreen toggle. Entering or leaving fullscreen does not blur
+  // the window, so it never counts as a tab switch; Esc exits
+  // fullscreen and is also safe.
   useEffect(() => {
     const onChange = () => setIsFullscreen(Boolean(document.fullscreenElement));
     document.addEventListener('fullscreenchange', onChange);

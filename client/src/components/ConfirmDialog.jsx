@@ -1,6 +1,4 @@
-// Confirm dialog built on Modal. Merged from Ishika's repo 2026-11-16
-// and restyled to this app's dark theme. `variant` is 'danger' (coral)
-// or 'primary'.
+// Confirm dialog built on Modal. `variant` is 'danger' (coral) or 'primary'.
 import React from 'react';
 import Modal from './Modal';
 
