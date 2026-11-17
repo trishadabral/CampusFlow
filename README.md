@@ -71,12 +71,8 @@ One-click demo buttons are on the login page.
 | Doc | What it covers |
 |---|---|
 | [docs/01_TEAM_CONTRIBUTIONS.md](docs/01_TEAM_CONTRIBUTIONS.md) | What each team member built |
-| [docs/02_PHASE2_PLAN.md](docs/02_PHASE2_PLAN.md) | Features planned for the next evaluation, with owners |
-| [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | How to demo every feature end to end |
 | [docs/AGENT_API.md](docs/AGENT_API.md) | The Windows exam-monitoring agent protocol |
-| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the pieces fit together |
-| [docs/KNOWN_ISSUES.md](docs/KNOWN_ISSUES.md) | What is still open |
-| [docs/03_INSTALLATION.md](docs/03_INSTALLATION.md) | How to install and run the app |
+| [docs/DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md) | How to demo every feature end to end |
 
 Older working documents are preserved in `docs/archive/`.
 
