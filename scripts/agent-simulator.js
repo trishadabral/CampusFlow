@@ -1,8 +1,6 @@
 #!/usr/bin/env node
 // scripts/agent-simulator.js
 // Node.js simulation of the Windows C++ Exam Monitoring Agent.
-// Uses native Node.js APIs (Node >= 18 native fetch), zero external npm dependencies.
-//
 // Usage:
 //   node scripts/agent-simulator.js <enrollment_code> [options]
 //
