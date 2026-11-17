@@ -1,10 +1,6 @@
 // server/tests/cpu-scheduler-algo.test.js
 // Node.js built-in test runner verifies the scheduling algorithms.
-// Merged from Ishika's repo 2026-11-16 and CORRECTED: her file's expected
-// values did not match her own simulator (FCFS waiting 4.3, priority order
 // [2,1,4,3], SRTF waiting ~4.0). The values below were verified by running
-// simulate() and hand-checking the Gantt chart. The Round-Robin test was
-// dropped: RR is deliberately out of this app (see os/cpu-scheduler.js).
 
 const { test, describe } = require('node:test');
 const assert = require('node:assert');
