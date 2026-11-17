@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Compile with UNICODE and wide string APIs
 add_compile_definitions(UNICODE _UNICODE WIN32_LEAN_AND_MEAN NOMINMAX)
 
-# Static CRT linkage (/MT and /MTd) so no external VC runtime redistributable is needed
+# Static CRT linkage (/MT and /MTd) so no external VC runtime redistributable 
 set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 
 if(MSVC)
