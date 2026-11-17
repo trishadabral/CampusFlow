@@ -78,8 +78,6 @@ export const student = {
 
 // --- Recruiter workspace & applicants (merged from Ishika's repo 2026-11-16) ---
 export const recruiter = {
-  getCompany: () => api.get('/recruiter/company'),
-  updateCompany: (data) => api.put('/recruiter/company', data),
   getApplicants: (driveId, params) => api.get(`/recruiter/drives/${driveId}/applicants`, { params }),
   bulkApplicants: (driveId, payload) => api.post(`/recruiter/drives/${driveId}/applicants/bulk`, payload),
   getOffers: (driveId) => api.get(`/recruiter/drives/${driveId}/offers`),
@@ -166,18 +164,12 @@ export const monitor = {
 export const reports = {
   placement: () => api.get('/reports/placement'),
   driveAnalytics: (driveId) => api.get(`/reports/drives/${driveId}/analytics`),
-  // CSV downloads (Phase 2, M4) — blob responses, saved by the page.
-  exportPlacementCsv: () => api.get('/reports/export.csv', { responseType: 'blob' }),
-  exportRosterCsv: (driveId) => api.get(`/reports/drives/${driveId}/roster.csv`, { responseType: 'blob' }),
   exportDrivePdf: (driveId) => api.get(`/reports/drives/${driveId}/report.pdf`, { responseType: 'blob' }),
   placementStats: () => api.get('/reports/placement-stats'),
   // Extra OS-lab reports (merged from Ishika's repo 2026-11-16)
   branches: () => api.get('/reports/branches'),
   companies: () => api.get('/reports/companies'),
   packages: () => api.get('/reports/packages'),
-  branchesCsv: () => api.get('/reports/branches.csv', { responseType: 'blob' }),
-  companiesCsv: () => api.get('/reports/companies.csv', { responseType: 'blob' }),
-  packagesCsv: () => api.get('/reports/packages.csv', { responseType: 'blob' }),
 };
 
 // --- Exam PC Monitoring & Supervision (merged from Ishika's repo 2026-11-16) ---

@@ -17,7 +17,6 @@ import StudentProfile from './pages/student/StudentProfile.jsx';
 import StudentJourney from './pages/student/StudentJourney.jsx';
 import TestTaker from './pages/student/TestTaker.jsx';
 import RecruiterDashboard from './pages/recruiter/RecruiterDashboard.jsx';
-import RecruiterCompany from './pages/recruiter/RecruiterCompany.jsx';
 import RecruiterInbox from './pages/recruiter/RecruiterInbox.jsx';
 import MyDrives from './pages/recruiter/MyDrives.jsx';
 import RecruiterDriveDetail from './pages/recruiter/RecruiterDriveDetail.jsx';
@@ -74,7 +73,6 @@ export default function App() {
         <Route path="drives/new" element={<NewDriveWizard />} />
         <Route path="drives/:id" element={<RecruiterDriveDetail />} />
         <Route path="offers/:id" element={<OfferLetter />} />
-        <Route path="company" element={<RecruiterCompany />} />
         <Route path="inbox" element={<RecruiterInbox />} />
       </Route>
 

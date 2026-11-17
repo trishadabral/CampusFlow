@@ -45,8 +45,9 @@ export default function ExamMonitoring() {
         examMonitoring.pcs(),
         examMonitoring.events({ limit: 100 }),
       ]);
-      setPcs(pcsRes.data.pcs ?? []);
-      setEvents(evRes.data.events ?? []);
+      // The endpoints return bare arrays, not { pcs: [...] } wrappers.
+      setPcs(pcsRes.data ?? []);
+      setEvents(evRes.data ?? []);
     } catch (err) {
       toast(errMsg(err), 'error');
     } finally {
@@ -158,7 +159,7 @@ export default function ExamMonitoring() {
                     {pc.agent_status === 'online' ? 'Agent online' : 'Agent offline'}
                   </Badge>
                 </div>
-                <div className="text-sm text-slate-400 mt-1">{pc.resource_name}</div>
+                <div className="text-sm text-slate-400 mt-1">{pc.lab_name}</div>
                 <div className="text-xs text-slate-500 mt-1">
                   {pc.last_heartbeat_at ? `Last seen ${timeAgo(pc.last_heartbeat_at)}` : 'Never connected'}
                 </div>
@@ -191,7 +192,7 @@ export default function ExamMonitoring() {
                   className="text-xs text-cyan-300 hover:text-cyan-200 mt-3"
                   onClick={() => setSelectedPc(selectedPc === pc.id ? null : pc.id)}
                 >
-                  {selectedPc === pc.id ? 'Show all events' : `Show events for this PC (${pc.recent_events_count})`}
+                  {selectedPc === pc.id ? 'Show all events' : `Show events for this PC (${pc.unreviewed_events_count ?? 0})`}
                 </button>
               </div>
             ))}

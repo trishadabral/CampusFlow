@@ -39,11 +39,12 @@ export default function ExamPcs() {
         users.list(),
         drives.list(),
       ]);
-      setComputers(pcRes.data.computers ?? []);
-      setProcesses(procRes.data.prohibited_processes ?? []);
-      setLabs((resRes.data.resources ?? []).filter((r) => r.type === 'lab'));
-      setStudents((userRes.data.users ?? []).filter((u) => u.role === 'student'));
-      setDriveOptions(driveRes.data.drives ?? []);
+      // These list endpoints return bare arrays, not { computers: [...] } wrappers.
+      setComputers(pcRes.data ?? []);
+      setProcesses(procRes.data ?? []);
+      setLabs((resRes.data ?? []).filter((r) => r.type === 'lab'));
+      setStudents((userRes.data ?? []).filter((u) => u.role === 'student'));
+      setDriveOptions(driveRes.data ?? []);
     } catch (err) {
       toast(errMsg(err), 'error');
     } finally {
@@ -61,7 +62,8 @@ export default function ExamPcs() {
     setBusy(true);
     try {
       const res = await examMonitoring.createComputer({ resource_id: Number(newPc.resource_id), pc_code: newPc.pc_code.trim() });
-      toast(`Computer added. Enrolment code: ${res.data.computer.enrollment_code}`, 'success');
+      // POST /admin/computers returns the computer flat, not { computer: {...} }.
+      toast(`Computer added. Enrolment code: ${res.data.enrollment_code}`, 'success');
       setShowAddPc(false);
       setNewPc({ resource_id: '', pc_code: '' });
       load();
@@ -164,7 +166,7 @@ export default function ExamPcs() {
             emptyHint="No exam computers yet. Add one to get its enrolment code."
             columns={[
               { key: 'pc_code', label: 'Computer', render: (c) => <span className="font-semibold text-slate-100">{c.pc_code}</span> },
-              { key: 'resource_name', label: 'Lab', render: (c) => c.resource_name ?? '—' },
+              { key: 'resource_name', label: 'Lab', render: (c) => c.lab_name ?? '—' },
               { key: 'status', label: 'Status', render: (c) => <Badge variant={c.status === 'available' ? 'success' : c.status === 'allocated' ? 'info' : 'warning'}>{c.status}</Badge> },
               { key: 'enrollment_code', label: 'Enrolment code', render: (c) => <span className="font-mono-tight text-xs">{c.enrollment_code}</span> },
               {
@@ -251,7 +253,7 @@ export default function ExamPcs() {
             <select id="al-pc" className="cf-input" value={allocate.computer_id} onChange={(e) => setAllocate({ ...allocate, computer_id: e.target.value })} required>
               <option value="">Choose an available computer…</option>
               {availablePcs.map((c) => (
-                <option key={c.id} value={c.id}>{c.pc_code} — {c.resource_name}</option>
+                <option key={c.id} value={c.id}>{c.pc_code} — {c.lab_name}</option>
               ))}
             </select>
           </div>

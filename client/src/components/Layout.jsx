@@ -20,7 +20,6 @@ const NAV = {
     { to: '/recruiter', label: 'Dashboard', end: true },
     { to: '/recruiter/drives', label: 'My Drives' },
     { to: '/recruiter/drives/new', label: 'Add Drive', highlight: true },
-    { to: '/recruiter/company', label: 'Company' },
     { to: '/recruiter/inbox', label: 'Inbox' },
   ],
   admin: [
@@ -36,7 +35,7 @@ const NAV = {
 
 const TITLES = {
   '/student': 'My Applications', '/student/drives': 'Find Drives', '/student/bookings': 'My Schedule', '/student/profile': 'My Profile', '/student/journey': 'My Journey',
-  '/recruiter': 'Dashboard', '/recruiter/drives': 'My Drives', '/recruiter/drives/new': 'Add Drive', '/recruiter/company': 'Company', '/recruiter/inbox': 'Inbox',
+  '/recruiter': 'Dashboard', '/recruiter/drives': 'My Drives', '/recruiter/drives/new': 'Add Drive', '/recruiter/inbox': 'Inbox',
   '/admin': 'Control Center', '/admin/monitor': 'Live Monitor', '/admin/scheduling': 'Interview Scheduler',
   '/admin/resources': 'Resources', '/admin/calendar': 'Room calendar', '/admin/audit': 'Activity log', '/admin/reports': 'Reports', '/admin/users': 'Users',
   '/admin/monitoring': 'Exam Monitoring', '/admin/exam-pcs': 'Exam PCs',

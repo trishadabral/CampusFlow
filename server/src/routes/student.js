@@ -470,6 +470,11 @@ router.get('/journey', authenticateToken, requireRole('student'), async (req, re
           'test', 'Test session', result ? 'done' : 'current',
           `${testSession.title}`
         ));
+      } else if (result) {
+        // A score exists, so the test was taken even if no booked session
+        // is on record (seeded/legacy results) — never show "not
+        // scheduled yet" next to a score.
+        steps.push(step('test', 'Test session', 'done', 'Test taken'));
       } else {
         steps.push(step(
           'test', 'Test session', 'todo',

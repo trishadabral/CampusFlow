@@ -1,4 +1,4 @@
-// M1 — Login: split screen. Left = brand + 3 value props. Right = form + demo buttons.
+// M1 — Login: split screen. Left = brand + tagline. Right = form + demo buttons.
 // Demo accounts (seeded): admin@campusflow.local / priya@techcorp.com / aarav@student.local — password: password123
 
 import React, { useState } from 'react';
@@ -47,8 +47,8 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Brand panel */}
-      <div className="hidden lg:flex w-[45%] bg-slate-900 text-white flex-col justify-between p-12">
+      {/* Brand panel — just the logo and the tagline. */}
+      <div className="hidden lg:flex w-[45%] bg-slate-900 text-white flex-col p-12">
         <div className="flex items-center gap-3">
           <svg className="w-10 h-10" viewBox="0 0 40 40" fill="none">
             <path d="M20 3 L34 11 V29 L20 37 L6 29 V11 Z" fill="#FF5C38" />
@@ -57,31 +57,9 @@ export default function Login() {
           </svg>
           <div className="font-display font-bold text-[22px] leading-[0.95] tracking-wide text-white">CAMPUS<br />FLOW</div>
         </div>
-        <div>
-          <h2 className="font-display text-3xl font-bold leading-tight mb-8">
-            The operating system<br />for campus placements.
-          </h2>
-          <ul className="space-y-5">
-            {[
-              ['One-click eligibility', 'Recruiters set the criteria once — the system builds the shortlist, with a reason for every student.'],
-              ['No double-booking, ever', 'Seats are assigned safely even when hundreds of students apply at once — no two students ever get the same seat.'],
-              ['Watch it work live', 'A live dashboard shows every booking, queue and change as it happens.'],
-            ].map(([t, d]) => (
-              <li key={t} className="flex gap-4">
-                <span className="mt-1 w-6 h-6 rounded-full bg-[#FF5C38]/30 flex items-center justify-center shrink-0">
-                  <svg className="w-3.5 h-3.5 text-cyan-300" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                  </svg>
-                </span>
-                <div>
-                  <div className="font-semibold">{t}</div>
-                  <div className="text-sm text-slate-400 mt-0.5">{d}</div>
-                </div>
-              </li>
-            ))}
-          </ul>
+        <div className="flex-1 flex items-center">
+          <p className="text-lg text-slate-400">Placement, scheduled.</p>
         </div>
-        <div className="text-xs text-slate-400">PBL Project · OS + DBMS · Phase 1</div>
       </div>
 
       {/* Form panel */}

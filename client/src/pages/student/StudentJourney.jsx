@@ -31,7 +31,8 @@ export default function StudentJourney() {
   const load = useCallback(async () => {
     try {
       const res = await student.journey();
-      setJourney(res.data.journey ?? []);
+      // The endpoint returns the journey as a bare array, not { journey: [...] }.
+      setJourney(res.data ?? []);
     } catch (err) {
       toast(errMsg(err), 'error');
     } finally {
